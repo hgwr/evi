@@ -1,24 +1,27 @@
 use std::io::Read;
 
+use crossterm::{
+    event::{self, Event, KeyCode},
+    terminal::{self, ClearType},
+    ExecutableCommand,
+};
+use std::io::{stdout, Write};
+
 fn main() {
-    // コマンドライン引数からファイル名を取得して、ファイルを開き、その中身を表示する
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
-        eprintln!("ファイル名を指定してください");
-        std::process::exit(1);
-    }
-    let filename = &args[1];
-    let mut file = match std::fs::File::open(filename) {
-        Ok(file) => file,
-        Err(err) => {
-            eprintln!("ファイルを開けませんでした: {}", err);
-            std::process::exit(1);
+    let mut stdout = stdout();
+
+    terminal::enable_raw_mode();
+
+    loop {
+        if let Ok(Event::Key(key_event)) = event::read() {
+            if key_event.code == KeyCode::Char('q') {
+                break;
+            }
+        } else if let Ok(Event::Resize(width, height)) = event::read() {
+            stdout.execute(terminal::Clear(ClearType::All));
+            println!("Terminal resized to width: {}, height: {}", width, height);
         }
-    };
-    let mut contents = String::new();
-    if let Err(err) = file.read_to_string(&mut contents) {
-        eprintln!("ファイルを読み込めませんでした: {}", err);
-        std::process::exit(1);
     }
-    println!("{}", contents);
+
+    terminal::disable_raw_mode();
 }

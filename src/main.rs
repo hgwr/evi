@@ -1,5 +1,8 @@
-mod evi;
+mod main_loop;
+mod buffer;
+mod editor;
 
 fn main() {
-    evi::main_loop::main_loop();
+    let mut editor = editor::Editor::from_cmd_args(std::env::args().collect());
+    main_loop::main_loop(&mut editor);
 }

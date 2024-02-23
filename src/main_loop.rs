@@ -5,7 +5,9 @@ use crossterm::{
 };
 use std::io::{stdout, Write};
 
-pub fn main_loop() {
+use crate::editor::Editor;
+
+pub fn main_loop(editor: &mut Editor) {
     let mut stdout = stdout();
 
     terminal::enable_raw_mode();

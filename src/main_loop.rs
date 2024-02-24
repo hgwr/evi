@@ -1,22 +1,21 @@
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, Event},
     terminal::{self, ClearType},
     ExecutableCommand,
 };
-use std::io::{stdout, Write};
+use std::io::stdout;
 
 use crate::editor::Editor;
 
 pub fn main_loop(editor: &mut Editor) {
     let mut stdout = stdout();
+    let mut input_keys = Vec::new();
 
     terminal::enable_raw_mode();
 
     loop {
         if let Ok(Event::Key(key_event)) = event::read() {
-            if key_event.code == KeyCode::Char('q') {
-                break;
-            }
+            input_keys.push(key_event.code);
         } else if let Ok(Event::Resize(width, height)) = event::read() {
             stdout.execute(terminal::Clear(ClearType::All));
             println!("Terminal resized to width: {}, height: {}", width, height);
@@ -25,3 +24,5 @@ pub fn main_loop(editor: &mut Editor) {
 
     terminal::disable_raw_mode();
 }
+
+

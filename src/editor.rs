@@ -1,10 +1,22 @@
-use std::path::PathBuf;
+use std::{io::Write, path::PathBuf};
 use crate::buffer::Buffer;
 
+pub struct TerminalSize {
+  pub width: u16,
+  pub height: u16,
+}
+
+pub struct CursorPosition {
+  pub row: usize,
+  pub col: usize,
+}
+
 pub struct Editor {
-  buffer: Buffer,
+  pub buffer: Buffer,
   editing_file_paths: Vec<PathBuf>,
   current_file_index: usize,
+  pub terminal_size: TerminalSize,
+  pub cursor_position: CursorPosition,
 }
 
 impl Editor {
@@ -13,6 +25,8 @@ impl Editor {
       buffer: Buffer::new(),
       editing_file_paths: Vec::new(),
       current_file_index: 0,
+      terminal_size: TerminalSize { width: 0, height: 0 },
+      cursor_position: CursorPosition { row: 0, col: 0 },
     }
   }
 
@@ -23,9 +37,11 @@ impl Editor {
   }
 
   pub fn save_file(&self) {
-    let file_path = &self.editing_file_paths[self.current_file_index];
-    std::fs::write(file_path, self.buffer.to_string())
-      .expect("Failed to write file");
+    if let Some(file_path) = self.editing_file_paths.get(self.current_file_index) {
+      self.buffer.to_file(file_path);
+    } else {
+      println!("No file to save");
+    }
   }
 
   pub fn from_cmd_args(args: Vec<String>) -> Editor {

@@ -8,8 +8,8 @@ use std::io::Write;
 
 use log::{error, info, warn};
 
+use crate::command::compose::{compose, InputState};
 use crate::editor::Editor;
-use crate::command::compose::{InputState, compose};
 
 pub fn main_loop(editor: &mut Editor) {
     let mut stdout = stdout();
@@ -30,11 +30,11 @@ pub fn main_loop(editor: &mut Editor) {
                 InputState::CommandCompleted(command_data) => {
                     editor.execute_command(command_data);
                     input_keys.clear();
-                },
+                }
                 InputState::CommandInvalid(key_codes) => {
                     //　TODO: error message
                     input_keys.clear();
-                },
+                }
                 _ => {}
             }
         } else if let Ok(Event::Resize(width, height)) = event::read() {

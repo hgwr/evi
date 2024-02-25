@@ -1,8 +1,8 @@
-mod main_loop;
 mod buffer;
-mod editor;
-mod render;
 mod command;
+mod editor;
+mod main_loop;
+mod render;
 
 use log::{error, info, warn};
 

@@ -1,4 +1,10 @@
 use std::path::PathBuf;
+use std::io::Write;
+
+use crossterm:: {
+  terminal::{self, ClearType},
+  ExecutableCommand
+};
 
 use log::info;
 
@@ -89,5 +95,16 @@ impl Editor {
 
   pub fn render(self: &mut Editor, stdout: &mut std::io::Stdout) {
     render(self, stdout);
+  }
+}
+
+impl Drop for Editor {
+  fn drop(&mut self) {
+    info!("Drop Editor");
+    let mut stdout = std::io::stdout();
+    terminal::disable_raw_mode().unwrap();
+    stdout.execute(terminal::Clear(ClearType::All)).unwrap();
+    stdout.execute(terminal::LeaveAlternateScreen).unwrap();
+    stdout.flush().unwrap();
   }
 }

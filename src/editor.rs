@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use log::info;
+
 use crate::buffer::Buffer;
 use crate::command::base::CommandData;
 use crate::command::factory::command_factory;
@@ -72,6 +74,7 @@ impl Editor {
   }
 
   pub fn resize_terminal(&mut self, width: u16, height: u16) {
+    info!("Resize terminal to width: {}, height: {}", width, height);
     self.terminal_size = TerminalSize { width, height };
     let width: usize = self.terminal_size.width.into();
     if self.cursor_position_on_screen.col >= width {

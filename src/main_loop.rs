@@ -17,6 +17,9 @@ pub fn main_loop(editor: &mut Editor) {
 
     terminal::enable_raw_mode().unwrap();
 
+    let terminal_size = terminal::size().unwrap();
+    editor.resize_terminal(terminal_size.0, terminal_size.1);
+
     loop {
         editor.render(&mut stdout);
         if let Ok(Event::Key(key_event)) = event::read() {

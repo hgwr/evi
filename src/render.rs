@@ -24,7 +24,7 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) {
         width: 0,
         height: 0,
     };
-    let start_row = editor.cursor_position_on_screen.row;
+    let start_row: usize = editor.window_position_in_buffer.row;
     let lines = &editor.buffer.lines;
     for line in &lines[start_row..] {
         for c in line.chars() {

@@ -18,7 +18,12 @@ pub struct TerminalSize {
   pub height: u16,
 }
 
-pub struct CursorPosition {
+pub struct CursorPositionOnScreen {
+  pub row: u16,
+  pub col: u16,
+}
+
+pub struct CursorPositionInBuffer {
   pub row: usize,
   pub col: usize,
 }
@@ -30,8 +35,9 @@ pub struct Editor {
   pub is_dirty: bool,
   pub should_exit: bool,
   pub terminal_size: TerminalSize,
-  pub cursor_position_on_screen: CursorPosition,
-  pub cursor_position_in_buffer: CursorPosition,
+  pub cursor_position_on_screen: CursorPositionOnScreen,
+  pub cursor_position_in_buffer: CursorPositionInBuffer,
+  pub window_position_in_buffer: CursorPositionInBuffer,
 }
 
 impl Editor {
@@ -43,8 +49,9 @@ impl Editor {
       is_dirty: false,
       should_exit: false,
       terminal_size: TerminalSize { width: 0, height: 0 },
-      cursor_position_on_screen: CursorPosition { row: 0, col: 0 },
-      cursor_position_in_buffer: CursorPosition { row: 0, col: 0 },
+      cursor_position_on_screen: CursorPositionOnScreen { row: 0, col: 0 },
+      cursor_position_in_buffer: CursorPositionInBuffer { row: 0, col: 0 },
+      window_position_in_buffer: CursorPositionInBuffer { row: 0, col: 0 },
     }
   }
 
@@ -82,7 +89,6 @@ impl Editor {
   pub fn resize_terminal(&mut self, width: u16, height: u16) {
     info!("Resize terminal to width: {}, height: {}", width, height);
     self.terminal_size = TerminalSize { width, height };
-    let width: usize = self.terminal_size.width.into();
     if self.cursor_position_on_screen.col >= width {
       self.cursor_position_on_screen.col = width - 1;
     }

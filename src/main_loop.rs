@@ -4,6 +4,7 @@ use crossterm::{
     ExecutableCommand,
 };
 use std::io::stdout;
+use std::io::Write;
 
 use log::{error, info, warn};
 
@@ -42,4 +43,7 @@ pub fn main_loop(editor: &mut Editor) {
     }
 
     terminal::disable_raw_mode().unwrap();
+    stdout.execute(terminal::Clear(ClearType::All)).unwrap();
+    stdout.execute(terminal::LeaveAlternateScreen).unwrap();
+    stdout.flush().unwrap();
 }

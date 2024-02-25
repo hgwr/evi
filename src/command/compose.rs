@@ -13,6 +13,7 @@ use crate::command::base::{CommandData, JumpCommandData};
 
 pub enum InputState {
   Start,
+
   AccumulateDigits(String), // Entering numbers
   CommandComposing(KeyCode),  // 'd', 'c' etc.
   CommandAndDigits(KeyCode, String),  // 'd3', 'c4' etc.
@@ -21,7 +22,6 @@ pub enum InputState {
 
   CommandCompleted(CommandData),
   CommandInvalid(String),
-  CommandIncomplete(),
 }
 
 // Take vi command input, interpret it, and generate commands

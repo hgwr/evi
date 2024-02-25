@@ -1,5 +1,9 @@
-use std::{io::Write, path::PathBuf};
+use std::path::PathBuf;
+
 use crate::buffer::Buffer;
+use crate::command::base::CommandData;
+use crate::command::factory::command_factory;
+use crate::render::render;
 
 pub struct TerminalSize {
   pub width: u16,
@@ -15,8 +19,10 @@ pub struct Editor {
   pub buffer: Buffer,
   editing_file_paths: Vec<PathBuf>,
   current_file_index: usize,
+  pub is_dirty: bool,
   pub terminal_size: TerminalSize,
-  pub cursor_position: CursorPosition,
+  pub cursor_position_on_screen: CursorPosition,
+  pub cursor_position_in_buffer: CursorPosition,
 }
 
 impl Editor {
@@ -25,8 +31,10 @@ impl Editor {
       buffer: Buffer::new(),
       editing_file_paths: Vec::new(),
       current_file_index: 0,
+      is_dirty: false,
       terminal_size: TerminalSize { width: 0, height: 0 },
-      cursor_position: CursorPosition { row: 0, col: 0 },
+      cursor_position_on_screen: CursorPosition { row: 0, col: 0 },
+      cursor_position_in_buffer: CursorPosition { row: 0, col: 0 },
     }
   }
 
@@ -59,5 +67,22 @@ impl Editor {
   pub fn current_file_name(&self) -> Option<String>{
     self.editing_file_paths.get(self.current_file_index)
       .map(|path| path.to_string_lossy().to_string())
+  }
+
+  pub fn resize_terminal(&mut self, width: u16, height: u16) {
+    self.terminal_size = TerminalSize { width, height };
+    let width: usize = self.terminal_size.width.into();
+    if self.cursor_position_on_screen.col >= width {
+      self.cursor_position_on_screen.col = width - 1;
+    }
+  }
+
+  pub fn execute_command(&mut self, command_data: CommandData) {
+    let mut command = command_factory(&command_data);
+    command.execute(self);
+  }
+
+  pub fn render(self: &mut Editor, stdout: &mut std::io::Stdout) {
+    render(self, stdout);
   }
 }

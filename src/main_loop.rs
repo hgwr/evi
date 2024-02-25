@@ -5,6 +5,8 @@ use crossterm::{
 };
 use std::io::stdout;
 
+use log::{error, info, warn};
+
 use crate::editor::Editor;
 use crate::command::compose::{InputState, compose};
 
@@ -12,11 +14,12 @@ pub fn main_loop(editor: &mut Editor) {
     let mut stdout = stdout();
     let mut input_keys = Vec::new();
 
-    terminal::enable_raw_mode();
+    terminal::enable_raw_mode().unwrap();
 
     loop {
         editor.render(&mut stdout);
         if let Ok(Event::Key(key_event)) = event::read() {
+            info!("Key event: {:?}", key_event);
             input_keys.push(key_event.code);
             let input_state = compose(&input_keys);
             match input_state {
@@ -33,7 +36,10 @@ pub fn main_loop(editor: &mut Editor) {
         } else if let Ok(Event::Resize(width, height)) = event::read() {
             editor.resize_terminal(width, height);
         }
+        if (editor.should_exit) {
+            break;
+        }
     }
 
-    terminal::disable_raw_mode();
+    terminal::disable_raw_mode().unwrap();
 }

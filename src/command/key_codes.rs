@@ -31,6 +31,7 @@ pub fn is_editing_command_with_range(key: &KeyCode) -> bool {
   match key {
     Char('d') | Char('c') | Char('y') => true,
     Char('>') | Char('<') => true,
+    Char('Z') => true,
     _ => false
   }
 }

@@ -8,7 +8,7 @@ impl Command for ExitCommand {
     if editor.is_dirty {
       // TODO: display a message to ask if the user wants to save the file
     } else {
-      std::process::exit(0);
+      editor.should_exit = true;
     }
   }
 }

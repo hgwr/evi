@@ -1,5 +1,7 @@
 use crossterm::event::KeyCode;
 
+use log::{error, info, warn};
+
 use crate::command::key_codes::{is_jump_command, is_editing_command_without_range, is_editing_command_with_range};
 use crate::command::base::{CommandData, JumpCommandData};
 
@@ -26,6 +28,8 @@ pub enum InputState {
 
 // Take vi command input, interpret it, and generate commands
 pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
+  info!("compose: {:?}", key_codes);
+
   let mut input_state = InputState::Start;
 
   for key in key_codes {
@@ -116,12 +120,15 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
         }
       },
       KeyCode::Esc => {
+        info!("Esc");
         return InputState::CommandCompleted(CommandData{count: 1, command: *key, range: None});
       },
       KeyCode::Enter => {
+        info!("Enter");
         return InputState::CommandCompleted(CommandData{count: 1, command: *key, range: None});
       },
       _ => {
+        info!("Other key: {:?}", key);
         ()
       }
     }

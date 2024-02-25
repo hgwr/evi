@@ -1,0 +1,19 @@
+refresh_rate: 1 seconds
+
+appenders:
+  file:
+    kind: file
+    path: "log/app.log"
+    encoder:
+      pattern: "{d} [{t}] {l} - {m}{n}"
+
+root:
+  level: info
+  appenders:
+    - file
+
+loggers:
+  app::backend:
+    level: info
+    appenders:
+      - file

@@ -39,7 +39,15 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
             KeyCode::Char(c) if c.is_digit(10) => {
                 if let InputState::Start = input_state {
                     // 1st digit
-                    input_state = InputState::AccumulateDigits(c.to_string());
+                    if c == &'0' {
+                        return InputState::CommandCompleted(CommandData {
+                            count: 1,
+                            command: KeyCode::Char('0'),
+                            range: None,
+                        });
+                    } else {
+                        input_state = InputState::AccumulateDigits(c.to_string());
+                    }
                 } else if let InputState::AccumulateDigits(digits) = input_state {
                     // 2nd or later digit
                     input_state = InputState::AccumulateDigits(format!("{}{}", digits, c));

@@ -108,3 +108,25 @@ impl Command for PreviousLine {
         }
     }
 }
+
+pub struct MoveBeginningOfLine;
+impl Command for MoveBeginningOfLine {
+    fn execute(&mut self, editor: &mut Editor) {
+        let mut backward_char = BackwardChar {};
+        while editor.cursor_position_in_buffer.col > 0 {
+            backward_char.execute(editor);
+        }
+    }
+}
+
+pub struct MoveEndOfLine;
+impl Command for MoveEndOfLine {
+    fn execute(&mut self, editor: &mut Editor) {
+        let mut forward_char = ForwardChar {};
+        let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
+        let num_of_chars = line.chars().count();
+        while editor.cursor_position_in_buffer.col < num_of_chars {
+            forward_char.execute(editor);
+        }
+    }
+}

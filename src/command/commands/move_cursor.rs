@@ -5,8 +5,8 @@ use unicode_width::UnicodeWidthChar;
 use crate::command::base::Command;
 use crate::editor::Editor;
 
-pub struct RightOneChar;
-impl Command for RightOneChar {
+pub struct ForwardChar;
+impl Command for ForwardChar {
     fn execute(&mut self, editor: &mut Editor) {
         let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
         let num_of_chars = line.chars().count();
@@ -32,8 +32,8 @@ impl Command for RightOneChar {
     }
 }
 
-pub struct LeftOneChar;
-impl Command for LeftOneChar {
+pub struct BackwardChar;
+impl Command for BackwardChar {
     fn execute(&mut self, editor: &mut Editor) {
         if editor.cursor_position_in_buffer.col > 0 {
             editor.cursor_position_in_buffer.col -= 1;
@@ -58,8 +58,8 @@ impl Command for LeftOneChar {
     }
 }
 
-pub struct DownOneLine;
-impl Command for DownOneLine {
+pub struct NextLine;
+impl Command for NextLine {
     fn execute(&mut self, editor: &mut Editor) {
         let next_row = editor.cursor_position_in_buffer.row + 1;
         if next_row < editor.buffer.lines.len() {
@@ -84,8 +84,8 @@ impl Command for DownOneLine {
     }
 }
 
-pub struct UpOneLine;
-impl Command for UpOneLine {
+pub struct PreviousLine;
+impl Command for PreviousLine {
     fn execute(&mut self, editor: &mut Editor) {
         if editor.cursor_position_in_buffer.row > 0 {
             editor.cursor_position_in_buffer.row -= 1;

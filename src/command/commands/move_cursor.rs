@@ -4,14 +4,15 @@ use crate::editor::Editor;
 pub struct DownOneLine;
 impl Command for DownOneLine {
     fn execute(&mut self, editor: &mut Editor) {
-        if editor.cursor_position_on_screen.row == editor.terminal_size.height - 1 {
-            if editor.window_position_in_buffer.row < editor.buffer.lines.len() {
+        let next_row = editor.cursor_position_in_buffer.row + 1;
+        if next_row < editor.buffer.lines.len() {
+            editor.cursor_position_in_buffer.row = next_row;
+
+            if editor.cursor_position_on_screen.row < editor.terminal_size.height - 1 {
+                editor.cursor_position_on_screen.row += 1;
+            } else {
                 editor.window_position_in_buffer.row += 1;
-                editor.cursor_position_in_buffer.row += 1;
             }
-        } else {
-            editor.cursor_position_on_screen.row += 1;
-            editor.cursor_position_in_buffer.row += 1;
         }
     }
 }
@@ -19,13 +20,14 @@ impl Command for DownOneLine {
 pub struct UpOneLine;
 impl Command for UpOneLine {
     fn execute(&mut self, editor: &mut Editor) {
-        if editor.cursor_position_on_screen.row == 0 {
-            if editor.window_position_in_buffer.row > 0 {
+        if editor.cursor_position_in_buffer.row > 0 {
+            editor.cursor_position_in_buffer.row -= 1;
+
+            if editor.cursor_position_on_screen.row > 0 {
+                editor.cursor_position_on_screen.row -= 1;
+            } else if editor.window_position_in_buffer.row > 0 {
                 editor.window_position_in_buffer.row -= 1;
-                editor.cursor_position_in_buffer.row -= 1;
             }
-        } else {
-            editor.cursor_position_on_screen.row -= 1;
         }
     }
 }

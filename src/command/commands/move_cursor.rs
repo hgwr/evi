@@ -20,7 +20,7 @@ impl Command for ForwardChar {
             let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
             editor.cursor_position_on_screen.col += char_width;
 
-            if editor.cursor_position_on_screen.col >= editor.terminal_size.width {
+            if editor.cursor_position_on_screen.col >= editor.terminal_size.width - 1 {
                 editor.cursor_position_on_screen.col = 0;
                 if editor.cursor_position_on_screen.row < editor.terminal_size.height {
                     editor.cursor_position_on_screen.row += 1;
@@ -77,8 +77,14 @@ impl Command for NextLine {
                 editor.cursor_position_in_buffer.col = num_of_chars;
             }
             if editor.cursor_position_in_buffer.col >= editor.terminal_size.width as usize {
-                editor.cursor_position_on_screen.col = editor.terminal_size.width;
-                editor.cursor_position_in_buffer.col = editor.terminal_size.width as usize;
+                let destination_col = editor.cursor_position_in_buffer.col as u16;
+                editor.cursor_position_in_buffer.col = 0;
+                editor.cursor_position_on_screen.col = 0;
+                editor.window_position_in_buffer.col = 0;
+                let mut forward_char = ForwardChar {};
+                while editor.cursor_position_on_screen.col < destination_col {
+                    forward_char.execute(editor);
+                }
             }
         }
     }
@@ -102,8 +108,14 @@ impl Command for PreviousLine {
                 editor.cursor_position_in_buffer.col = num_of_chars;
             }
             if editor.cursor_position_in_buffer.col >= editor.terminal_size.width as usize {
-                editor.cursor_position_on_screen.col = editor.terminal_size.width;
-                editor.cursor_position_in_buffer.col = editor.terminal_size.width as usize;
+                let destination_col = editor.cursor_position_in_buffer.col as u16;
+                editor.cursor_position_in_buffer.col = 0;
+                editor.cursor_position_on_screen.col = 0;
+                editor.window_position_in_buffer.col = 0;
+                let mut forward_char = ForwardChar {};
+                while editor.cursor_position_on_screen.col < destination_col {
+                    forward_char.execute(editor);
+                }
             }
         }
     }

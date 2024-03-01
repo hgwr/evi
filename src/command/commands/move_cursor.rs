@@ -20,7 +20,7 @@ impl Command for ForwardChar {
             let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
             editor.cursor_position_on_screen.col += char_width;
 
-            if editor.cursor_position_on_screen.col >= editor.terminal_size.width - 1 {
+            if editor.cursor_position_on_screen.col >= editor.terminal_size.width {
                 editor.cursor_position_on_screen.col = 0;
                 if editor.cursor_position_on_screen.row < editor.terminal_size.height {
                     editor.cursor_position_on_screen.row += 1;
@@ -53,6 +53,7 @@ impl Command for BackwardChar {
                 } else if editor.window_position_in_buffer.row > 0 {
                     editor.window_position_in_buffer.row -= 1;
                 }
+                editor.cursor_position_on_screen.col = editor.terminal_size.width - char_width;
             }
         }
     }

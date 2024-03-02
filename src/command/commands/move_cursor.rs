@@ -36,14 +36,13 @@ pub struct BackwardChar;
 impl Command for BackwardChar {
     fn execute(&mut self, editor: &mut Editor) {
         if editor.cursor_position_in_buffer.col > 0 {
+            editor.cursor_position_in_buffer.col -= 1;
             let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
             let c = line
                 .chars()
                 .nth(editor.cursor_position_in_buffer.col)
                 .unwrap();
             let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
-
-            editor.cursor_position_in_buffer.col -= 1;
             if editor.cursor_position_on_screen.col >= char_width {
                 editor.cursor_position_on_screen.col -= char_width;
             } else {

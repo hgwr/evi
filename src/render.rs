@@ -59,7 +59,8 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
         ?;
     for c in editor.status_line.chars() {
         stdout.queue(style::Print(c))?;
-        cursor_position_on_writing.width += 1;
+        let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
+        cursor_position_on_writing.width += char_width;
     }
     for _ in cursor_position_on_writing.width..editor.terminal_size.width {
         stdout.queue(style::Print(" "))?;

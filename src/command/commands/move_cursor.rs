@@ -12,15 +12,14 @@ impl Command for ForwardChar {
         let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
         let num_of_chars = line.chars().count();
         if editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-            editor.cursor_position_in_buffer.col += 1;
-
             let c = line
                 .chars()
                 .nth(editor.cursor_position_in_buffer.col)
                 .unwrap();
             let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
-            editor.cursor_position_on_screen.col += char_width;
 
+            editor.cursor_position_in_buffer.col += 1;
+            editor.cursor_position_on_screen.col += char_width;
             if editor.cursor_position_on_screen.col >= editor.terminal_size.width {
                 editor.cursor_position_on_screen.col = 0;
                 if editor.cursor_position_on_screen.row < editor.content_height() {
@@ -37,8 +36,6 @@ pub struct BackwardChar;
 impl Command for BackwardChar {
     fn execute(&mut self, editor: &mut Editor) {
         if editor.cursor_position_in_buffer.col > 0 {
-            editor.cursor_position_in_buffer.col -= 1;
-
             let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
             let c = line
                 .chars()
@@ -46,6 +43,7 @@ impl Command for BackwardChar {
                 .unwrap();
             let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
 
+            editor.cursor_position_in_buffer.col -= 1;
             if editor.cursor_position_on_screen.col >= char_width {
                 editor.cursor_position_on_screen.col -= char_width;
             } else {
@@ -128,9 +126,8 @@ impl Command for PreviousLine {
 
             let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
             let num_of_chars = line.chars().count();
-            let num_of_lines_on_screen = if num_of_chars == 0 {
-                1
-            } else if num_of_chars % editor.terminal_size.width as usize == 0 {
+            let num_of_lines_on_screen = if num_of_chars % editor.terminal_size.width as usize == 0
+            {
                 num_of_chars / editor.terminal_size.width as usize
             } else {
                 num_of_chars / editor.terminal_size.width as usize + 1

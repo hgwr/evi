@@ -35,3 +35,14 @@ pub fn is_editing_command_with_range(key: &KeyCode) -> bool {
         _ => false,
     }
 }
+
+pub fn is_ctrl_command(key: &KeyCode) -> bool {
+    match key {
+        Char('[') | Char('l') | Char('g') => true,
+        Char('f') | Char('b') | Char('d') | Char('u') => true,
+        Char('e') | Char('y') => true,
+        Char('c') => true,
+        Char('z') => true,
+         _ => false,
+    }
+}

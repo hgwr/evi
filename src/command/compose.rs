@@ -4,7 +4,7 @@ use log::{error, info, warn};
 
 use crate::command::base::{CommandData, JumpCommandData};
 use crate::command::key_codes::{
-    is_editing_command_with_range, is_editing_command_without_range, is_jump_command,
+    is_ctrl_command, is_editing_command_with_range, is_editing_command_without_range, is_jump_command
 };
 
 // コマンドのパターンのリスト
@@ -37,6 +37,23 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
 
     for event in key_events {
         match event {
+            KeyEvent {
+                code: KeyCode::Esc,
+                modifiers: KeyModifiers::NONE,
+                ..
+            }
+            | KeyEvent {
+                code: KeyCode::Char('['),
+                modifiers: KeyModifiers::CONTROL,
+                ..
+            } => {
+                info!("Esc");
+                return InputState::CommandCompleted(CommandData {
+                    count: 1,
+                    command: KeyCode::Esc,
+                    range: None,
+                });
+            }
             KeyEvent {
                 code: KeyCode::Char(c),
                 modifiers: KeyModifiers::NONE,
@@ -225,16 +242,26 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 }
             }
             KeyEvent {
-                code: KeyCode::Esc,
-                modifiers: KeyModifiers::NONE,
+                code,
+                modifiers: KeyModifiers::CONTROL,
                 ..
-            } => {
-                info!("Esc");
-                return InputState::CommandCompleted(CommandData {
-                    count: 1,
-                    command: KeyCode::Esc,
-                    range: None,
-                });
+            } if is_ctrl_command(code) => {
+                if let InputState::Start = input_state {
+                    return InputState::CommandCompleted(CommandData {
+                        count: 1,
+                        command: *code,
+                        range: None,
+                    });
+                } else if let InputState::AccumulateDigits(digits) = input_state {
+                    let count = digits.parse().unwrap();
+                    return InputState::CommandCompleted(CommandData {
+                        count,
+                        command: *code,
+                        range: None,
+                    });
+                } else {
+                    return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
+                }
             }
             KeyEvent {
                 code: KeyCode::Enter,

@@ -124,6 +124,10 @@ pub struct PreviousLine;
 impl Command for PreviousLine {
     fn execute(&mut self, editor: &mut Editor) {
         if editor.cursor_position_in_buffer.row > 0 {
+            let mut current_cursor_col_in_buffer = editor.cursor_position_in_buffer.col;
+            let mut move_beginning_of_line = MoveBeginningOfLine {};
+            move_beginning_of_line.execute(editor);
+
             editor.cursor_position_in_buffer.row -= 1;
 
             let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
@@ -138,10 +142,13 @@ impl Command for PreviousLine {
 
             if editor.cursor_position_on_screen.row > 0 {
                 editor.cursor_position_on_screen.row -= num_of_lines_on_screen;
-            } else {
-                if editor.window_position_in_buffer.row > 0 {
-                    editor.window_position_in_buffer.row -= num_of_lines_on_screen as usize;
-                }
+            } else if editor.window_position_in_buffer.row > 0 {
+                editor.window_position_in_buffer.row -= num_of_lines_on_screen as usize;
+            }
+
+            let mut forward_char = ForwardChar {};
+            for _ in 0..current_cursor_col_in_buffer {
+                forward_char.execute(editor);
             }
         }
     }

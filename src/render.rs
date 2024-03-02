@@ -14,6 +14,7 @@ use unicode_width::UnicodeWidthChar;
 use crate::editor::{Editor, TerminalSize};
 
 pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) {
+    info!("render");
     let mut stdout = stdout.lock();
     stdout
         .queue(terminal::Clear(terminal::ClearType::All))

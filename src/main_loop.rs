@@ -22,25 +22,32 @@ pub fn main_loop(editor: &mut Editor) {
 
     loop {
         editor.render(&mut stdout);
-        if let Ok(Event::Key(key_event)) = event::read() {
-            info!("Key event: {:?}", key_event);
-            input_keys.push(key_event.code);
-            let input_state = compose(&input_keys);
-            match input_state {
-                InputState::CommandCompleted(command_data) => {
-                    editor.execute_command(command_data);
-                    input_keys.clear();
+        let result = event::read();
+        match result {
+            Ok(Event::Key(key_event)) => {
+                info!("Key event: {:?}", key_event);
+                input_keys.push(key_event.code);
+                let input_state = compose(&input_keys);
+                match input_state {
+                    InputState::CommandCompleted(command_data) => {
+                        editor.execute_command(command_data);
+                        input_keys.clear();
+                    }
+                    InputState::CommandInvalid(key_codes) => {
+                        //　TODO: error message
+                        input_keys.clear();
+                    }
+                    _ => {}
                 }
-                InputState::CommandInvalid(key_codes) => {
-                    //　TODO: error message
-                    input_keys.clear();
-                }
-                _ => {}
             }
-        } else if let Ok(Event::Resize(width, height)) = event::read() {
-            editor.resize_terminal(width, height);
+            Ok(Event::Resize(width, height)) => {
+                editor.resize_terminal(width, height);
+            }
+            _ => {
+                info!("Other event: {:?}", result)
+            }
         }
-        if (editor.should_exit) {
+        if editor.should_exit {
             break;
         }
     }

@@ -3,25 +3,26 @@ use crossterm::{
     terminal::{self, ClearType},
     ExecutableCommand,
 };
-use std::io::stdout;
+use std::{error::Error, io::stdout};
 use std::io::Write;
 
 use log::{error, info, warn};
 
 use crate::command::compose::{compose, InputState};
 use crate::editor::Editor;
+use crate::generic_error::GenericResult;
 
-pub fn main_loop(editor: &mut Editor) {
+pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
     let mut stdout = stdout();
     let mut event_keys: Vec<KeyEvent> = Vec::new();
 
-    terminal::enable_raw_mode().unwrap();
+    terminal::enable_raw_mode()?;
 
-    let terminal_size = terminal::size().unwrap();
+    let terminal_size = terminal::size()?;
     editor.resize_terminal(terminal_size.0, terminal_size.1);
 
     loop {
-        editor.render(&mut stdout);
+        editor.render(&mut stdout)?;
         let result = event::read();
         match result {
             Ok(Event::Key(key_event)) => {
@@ -56,8 +57,10 @@ pub fn main_loop(editor: &mut Editor) {
         }
     }
 
-    terminal::disable_raw_mode().unwrap();
-    stdout.execute(terminal::Clear(ClearType::All)).unwrap();
-    stdout.execute(terminal::LeaveAlternateScreen).unwrap();
-    stdout.flush().unwrap();
+    terminal::disable_raw_mode()?;
+    stdout.execute(terminal::Clear(ClearType::All))?;
+    stdout.execute(terminal::LeaveAlternateScreen)?;
+    stdout.flush()?;
+
+    Ok(())
 }

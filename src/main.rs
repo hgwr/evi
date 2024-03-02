@@ -3,6 +3,7 @@ mod command;
 mod editor;
 mod main_loop;
 mod render;
+mod generic_error;
 
 use log::{error, info, warn};
 
@@ -12,5 +13,7 @@ fn main() {
     info!("Start the editor");
 
     let mut editor = editor::Editor::from_cmd_args(std::env::args().collect());
-    main_loop::main_loop(&mut editor);
+    if let Err(e) = main_loop::main_loop(&mut editor) {
+        error!("Error: {}", e);
+    }
 }

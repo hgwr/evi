@@ -8,7 +8,7 @@ use crossterm::{
 
 use log::info;
 
-use crate::buffer::Buffer;
+use crate::{buffer::Buffer, generic_error::GenericResult};
 use crate::command::base::CommandData;
 use crate::command::factory::command_factory;
 use crate::render::render;
@@ -105,8 +105,8 @@ impl Editor {
         command.execute(self);
     }
 
-    pub fn render(self: &mut Editor, stdout: &mut std::io::Stdout) {
-        render(self, stdout);
+    pub fn render(self: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResult<()> {
+        render(self, stdout)
     }
 
     pub fn content_height(&self) -> u16 {

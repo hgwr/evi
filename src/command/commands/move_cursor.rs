@@ -136,9 +136,9 @@ impl Command for PreviousLine {
                 num_of_chars / editor.terminal_size.width as usize + 1
             };
 
-            if editor.cursor_position_on_screen.row - num_of_lines_on_screen as u16 >= 0 {
+            if editor.cursor_position_on_screen.row >= num_of_lines_on_screen as u16 {
                 editor.cursor_position_on_screen.row -= num_of_lines_on_screen as u16;
-            } else if editor.window_position_in_buffer.row - num_of_lines_on_screen >= 0 {
+            } else if editor.window_position_in_buffer.row >= num_of_lines_on_screen {
                 editor.window_position_in_buffer.row -= num_of_lines_on_screen;
             } else {
                 editor.window_position_in_buffer.row = 0;

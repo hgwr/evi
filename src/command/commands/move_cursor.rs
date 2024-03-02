@@ -23,7 +23,7 @@ impl Command for ForwardChar {
 
             if editor.cursor_position_on_screen.col >= editor.terminal_size.width {
                 editor.cursor_position_on_screen.col = 0;
-                if editor.cursor_position_on_screen.row < editor.terminal_size.height {
+                if editor.cursor_position_on_screen.row < editor.content_height() {
                     editor.cursor_position_on_screen.row += 1;
                 } else {
                     editor.window_position_in_buffer.row += 1;
@@ -92,7 +92,7 @@ impl Command for NextLine {
             move_end_of_line.execute(editor);
 
             editor.cursor_position_in_buffer.row = next_row;
-            if editor.cursor_position_on_screen.row < editor.terminal_size.height {
+            if editor.cursor_position_on_screen.row < editor.content_height() {
                 editor.cursor_position_on_screen.row += 1;
             } else {
                 editor.window_position_in_buffer.row += 1;

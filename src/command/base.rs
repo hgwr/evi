@@ -1,4 +1,4 @@
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers};
 
 use crate::editor::Editor;
 
@@ -21,5 +21,6 @@ pub struct JumpCommandData {
 pub struct CommandData {
     pub count: usize,
     pub command: KeyCode,
+    pub modifiers: KeyModifiers,
     pub range: Option<JumpCommandData>,
 }

@@ -51,6 +51,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 return InputState::CommandCompleted(CommandData {
                     count: 1,
                     command: KeyCode::Esc,
+                    modifiers: KeyModifiers::NONE,
                     range: None,
                 });
             }
@@ -65,6 +66,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                         return InputState::CommandCompleted(CommandData {
                             count: 1,
                             command: KeyCode::Char('0'),
+                            modifiers: KeyModifiers::NONE,
                             range: None,
                         });
                     } else {
@@ -105,13 +107,15 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
                         command: *code,
+                        modifiers: *modifiers,
                         range: None,
                     });
                 } else if let InputState::AccumulateDigits(digits) = input_state {
                     let count = digits.parse().unwrap();
                     return InputState::CommandCompleted(CommandData {
-                        command: *code,
                         count,
+                        command: *code,
+                        modifiers: *modifiers,
                         range: None,
                     });
                 } else if let InputState::CommandComposing(command) = input_state {
@@ -122,6 +126,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
                         command,
+                        modifiers: *modifiers,
                         range,
                     });
                 } else if let InputState::CommandAndDigits(command, digits) = input_state {
@@ -132,6 +137,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
                         command,
+                        modifiers: *modifiers,
                         range,
                     });
                 } else if let InputState::DigitsAndCommand(count, command) = input_state {
@@ -140,8 +146,9 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                         command: *code,
                     });
                     return InputState::CommandCompleted(CommandData {
-                        count: count,
-                        command: command,
+                        count,
+                        command,
+                        modifiers: *modifiers,
                         range,
                     });
                 } else if let InputState::DigitsAndCommandAndDigits(count, command, digits) =
@@ -154,6 +161,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count,
                         command,
+                        modifiers: *modifiers,
                         range,
                     });
                 } else {
@@ -169,6 +177,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
                         command: *code,
+                        modifiers: *modifiers,
                         range: None,
                     });
                 } else if let InputState::AccumulateDigits(digits) = input_state {
@@ -176,6 +185,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count,
                         command: *code,
+                        modifiers: *modifiers,
                         range: None,
                     });
                 } else {
@@ -202,6 +212,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                         return InputState::CommandCompleted(CommandData {
                             count: 1,
                             command,
+                            modifiers: *modifiers,
                             range,
                         });
                     } else {
@@ -222,6 +233,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                         return InputState::CommandCompleted(CommandData {
                             count: 1,
                             command,
+                            modifiers: *modifiers,
                             range,
                         });
                     } else {
@@ -250,6 +262,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
                         command: *code,
+                        modifiers: KeyModifiers::CONTROL,
                         range: None,
                     });
                 } else if let InputState::AccumulateDigits(digits) = input_state {
@@ -257,6 +270,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count,
                         command: *code,
+                        modifiers: KeyModifiers::CONTROL,
                         range: None,
                     });
                 } else {
@@ -272,6 +286,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 return InputState::CommandCompleted(CommandData {
                     count: 1,
                     command: KeyCode::Enter,
+                    modifiers: KeyModifiers::NONE,
                     range: None,
                 });
             }

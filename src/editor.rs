@@ -38,6 +38,7 @@ pub struct Editor {
     pub cursor_position_on_screen: CursorPositionOnScreen,
     pub cursor_position_in_buffer: CursorPositionInBuffer,
     pub window_position_in_buffer: CursorPositionInBuffer,
+    pub status_line: String,
 }
 
 impl Editor {
@@ -55,6 +56,7 @@ impl Editor {
             cursor_position_on_screen: CursorPositionOnScreen { row: 0, col: 0 },
             cursor_position_in_buffer: CursorPositionInBuffer { row: 0, col: 0 },
             window_position_in_buffer: CursorPositionInBuffer { row: 0, col: 0 },
+            status_line: "".to_string(),
         }
     }
 
@@ -105,6 +107,10 @@ impl Editor {
 
     pub fn render(self: &mut Editor, stdout: &mut std::io::Stdout) {
         render(self, stdout);
+    }
+
+    pub fn content_height(&self) -> u16 {
+        self.terminal_size.height - 1
     }
 }
 

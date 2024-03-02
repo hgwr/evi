@@ -40,7 +40,7 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) {
                     .queue(cursor::MoveTo(0, cursor_position_on_writing.height))
                     .unwrap();
             }
-            if cursor_position_on_writing.height >= editor.terminal_size.height {
+            if cursor_position_on_writing.height >= editor.content_height() {
                 break;
             }
         }
@@ -49,6 +49,20 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) {
         stdout
             .queue(cursor::MoveTo(0, cursor_position_on_writing.height))
             .unwrap();
+    }
+
+    // render status line
+    cursor_position_on_writing.width = 0;
+    cursor_position_on_writing.height = editor.content_height();
+    stdout
+        .queue(cursor::MoveTo(0, cursor_position_on_writing.height))
+        .unwrap();
+    for c in editor.status_line.chars() {
+        stdout.queue(style::Print(c)).unwrap();
+        cursor_position_on_writing.width += 1;
+    }
+    for _ in cursor_position_on_writing.width..editor.terminal_size.width {
+        stdout.queue(style::Print(" ")).unwrap();
     }
 
     stdout

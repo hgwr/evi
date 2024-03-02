@@ -79,7 +79,11 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
                 }
             }
-            KeyEvent { code, .. } if is_jump_command(code) => {
+            KeyEvent {
+                code, modifiers, ..
+            } if (*modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT)
+                && is_jump_command(code) =>
+            {
                 if let InputState::Start = input_state {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
@@ -139,7 +143,11 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
                 }
             }
-            KeyEvent { code, .. } if is_editing_command_without_range(code) => {
+            KeyEvent {
+                code, modifiers, ..
+            } if (*modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT)
+                && is_editing_command_without_range(code) =>
+            {
                 if let InputState::Start = input_state {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
@@ -157,7 +165,11 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
                 }
             }
-            KeyEvent { code, .. } if is_editing_command_with_range(code) => {
+            KeyEvent {
+                code, modifiers, ..
+            } if (*modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT)
+                && is_editing_command_with_range(code) =>
+            {
                 if let InputState::Start = input_state {
                     input_state = InputState::CommandComposing(*code);
                 } else if let InputState::AccumulateDigits(digits) = input_state {
@@ -213,7 +225,9 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 }
             }
             KeyEvent {
-                code: KeyCode::Esc, ..
+                code: KeyCode::Esc,
+                modifiers: KeyModifiers::NONE,
+                ..
             } => {
                 info!("Esc");
                 return InputState::CommandCompleted(CommandData {
@@ -224,6 +238,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
             }
             KeyEvent {
                 code: KeyCode::Enter,
+                modifiers: KeyModifiers::NONE,
                 ..
             } => {
                 info!("Enter");

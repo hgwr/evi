@@ -1,5 +1,5 @@
 use crossterm::{
-    event::{self, Event},
+    event::{self, Event, KeyEvent},
     terminal::{self, ClearType},
     ExecutableCommand,
 };
@@ -13,7 +13,7 @@ use crate::editor::Editor;
 
 pub fn main_loop(editor: &mut Editor) {
     let mut stdout = stdout();
-    let mut input_keys = Vec::new();
+    let mut event_keys: Vec<KeyEvent> = Vec::new();
 
     terminal::enable_raw_mode().unwrap();
 
@@ -26,18 +26,18 @@ pub fn main_loop(editor: &mut Editor) {
         match result {
             Ok(Event::Key(key_event)) => {
                 info!("Key event: {:?}", key_event);
-                input_keys.push(key_event.code);
-                let input_state = compose(&input_keys);
+                event_keys.push(key_event);
+                let input_state = compose(&event_keys);
                 match input_state {
                     InputState::CommandCompleted(command_data) => {
                         info!("Command completed: {:?}", command_data);
                         editor.execute_command(command_data);
-                        input_keys.clear();
+                        event_keys.clear();
                     }
                     InputState::CommandInvalid(key_codes) => {
                         //　TODO: error message
                         error!("Invalid command: {:?}", key_codes);
-                        input_keys.clear();
+                        event_keys.clear();
                     }
                     _ => {
                         info!("Input state: {:?}", input_state);

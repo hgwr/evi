@@ -1,4 +1,4 @@
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use log::{error, info, warn};
 
@@ -30,14 +30,18 @@ pub enum InputState {
 }
 
 // Take vi command input, interpret it, and generate commands
-pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
-    info!("compose: {:?}", key_codes);
+pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
+    info!("compose: {:?}", key_events);
 
     let mut input_state = InputState::Start;
 
-    for key in key_codes {
-        match key {
-            KeyCode::Char(c) if c.is_digit(10) => {
+    for event in key_events {
+        match event {
+            KeyEvent {
+                code: KeyCode::Char(c),
+                modifiers: KeyModifiers::NONE,
+                ..
+            } if c.is_digit(10) => {
                 if let InputState::Start = input_state {
                     // 1st digit
                     if c == &'0' {
@@ -72,27 +76,27 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
                         format!("{}{}", digits, c),
                     );
                 } else {
-                    return InputState::CommandInvalid(format!("Invalid command: {:?}", key));
+                    return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
                 }
             }
-            _ if is_jump_command(key) => {
+            KeyEvent { code, .. } if is_jump_command(code) => {
                 if let InputState::Start = input_state {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
-                        command: *key,
+                        command: *code,
                         range: None,
                     });
                 } else if let InputState::AccumulateDigits(digits) = input_state {
                     let count = digits.parse().unwrap();
                     return InputState::CommandCompleted(CommandData {
-                        command: *key,
+                        command: *code,
                         count,
                         range: None,
                     });
                 } else if let InputState::CommandComposing(command) = input_state {
                     let range = Some(JumpCommandData {
                         count: 1,
-                        command: *key,
+                        command: *code,
                     });
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
@@ -102,7 +106,7 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
                 } else if let InputState::CommandAndDigits(command, digits) = input_state {
                     let range = Some(JumpCommandData {
                         count: digits.parse().unwrap(),
-                        command: *key,
+                        command: *code,
                     });
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
@@ -112,7 +116,7 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
                 } else if let InputState::DigitsAndCommand(count, command) = input_state {
                     let range = Some(JumpCommandData {
                         count: 1,
-                        command: *key,
+                        command: *code,
                     });
                     return InputState::CommandCompleted(CommandData {
                         count: count,
@@ -124,7 +128,7 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
                 {
                     let range = Some(JumpCommandData {
                         count: digits.parse().unwrap(),
-                        command: *key,
+                        command: *code,
                     });
                     return InputState::CommandCompleted(CommandData {
                         count,
@@ -132,39 +136,39 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
                         range,
                     });
                 } else {
-                    return InputState::CommandInvalid(format!("Invalid command: {:?}", key));
+                    return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
                 }
             }
-            _ if is_editing_command_without_range(key) => {
+            KeyEvent { code, .. } if is_editing_command_without_range(code) => {
                 if let InputState::Start = input_state {
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
-                        command: *key,
+                        command: *code,
                         range: None,
                     });
                 } else if let InputState::AccumulateDigits(digits) = input_state {
                     let count = digits.parse().unwrap();
                     return InputState::CommandCompleted(CommandData {
                         count,
-                        command: *key,
+                        command: *code,
                         range: None,
                     });
                 } else {
-                    return InputState::CommandInvalid(format!("Invalid command: {:?}", key));
+                    return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
                 }
             }
-            _ if is_editing_command_with_range(key) => {
+            KeyEvent { code, .. } if is_editing_command_with_range(code) => {
                 if let InputState::Start = input_state {
-                    input_state = InputState::CommandComposing(*key);
+                    input_state = InputState::CommandComposing(*code);
                 } else if let InputState::AccumulateDigits(digits) = input_state {
                     let count = digits.parse().unwrap();
-                    input_state = InputState::DigitsAndCommand(count, *key);
+                    input_state = InputState::DigitsAndCommand(count, *code);
                 } else if let InputState::CommandComposing(command) = input_state {
-                    if command == *key {
+                    if command == *code {
                         // dd, cc, yy, etc.
                         let range = Some(JumpCommandData {
                             count: 1,
-                            command: *key,
+                            command: *code,
                         });
                         return InputState::CommandCompleted(CommandData {
                             count: 1,
@@ -172,19 +176,19 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
                             range,
                         });
                     } else {
-                        return InputState::CommandInvalid(format!("Invalid command: {:?}", key));
+                        return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
                     }
                 } else if let InputState::CommandAndDigits(command, digits) = input_state {
                     return InputState::CommandInvalid(format!(
                         "Invalid command: {:?}{:?}{:?}",
-                        command, digits, key
+                        command, digits, event
                     ));
                 } else if let InputState::DigitsAndCommand(count, command) = input_state {
-                    if command == *key {
+                    if command == *code {
                         // 3dd, 4cc, 5yy, etc.
                         let range = Some(JumpCommandData {
                             count: count,
-                            command: *key,
+                            command: *code,
                         });
                         return InputState::CommandCompleted(CommandData {
                             count: 1,
@@ -194,7 +198,7 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
                     } else {
                         return InputState::CommandInvalid(format!(
                             "Invalid command: {:?}{:?}{:?}",
-                            command, count, key
+                            command, count, event
                         ));
                     }
                 } else if let InputState::DigitsAndCommandAndDigits(count, command, digits) =
@@ -202,30 +206,35 @@ pub fn compose(key_codes: &Vec<KeyCode>) -> InputState {
                 {
                     return InputState::CommandInvalid(format!(
                         "Invalid command: {:?}{:?}{:?}{:?}",
-                        command, count, digits, key
+                        command, count, digits, event
                     ));
                 } else {
-                    return InputState::CommandInvalid(format!("Invalid command: {:?}", key));
+                    return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
                 }
             }
-            KeyCode::Esc => {
+            KeyEvent {
+                code: KeyCode::Esc, ..
+            } => {
                 info!("Esc");
                 return InputState::CommandCompleted(CommandData {
                     count: 1,
-                    command: *key,
+                    command: KeyCode::Esc,
                     range: None,
                 });
             }
-            KeyCode::Enter => {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
                 info!("Enter");
                 return InputState::CommandCompleted(CommandData {
                     count: 1,
-                    command: *key,
+                    command: KeyCode::Enter,
                     range: None,
                 });
             }
             _ => {
-                info!("Other key: {:?}", key);
+                info!("Other key: {:?}", event);
                 ()
             }
         }

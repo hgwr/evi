@@ -18,10 +18,6 @@ impl Command for ForwardChar {
                 .chars()
                 .nth(editor.cursor_position_in_buffer.col)
                 .unwrap();
-            info!(
-                "### c: {:?}, editor.cursor_position_in_buffer.col = {:?}, num_of_chars = {:?}",
-                c, editor.cursor_position_in_buffer.col, num_of_chars
-            );
             let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
             editor.cursor_position_on_screen.col += char_width;
 

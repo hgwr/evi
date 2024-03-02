@@ -15,6 +15,7 @@ use crate::command::key_codes::{
 // - 繰り返し指定付きの編集コマンド (4x, 3i[str] など)
 // - 範囲つきの編集コマンド (d3w, c4e, 4dl など)
 
+#[derive(Debug)]
 pub enum InputState {
     Start,
 

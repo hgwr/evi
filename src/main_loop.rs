@@ -30,14 +30,18 @@ pub fn main_loop(editor: &mut Editor) {
                 let input_state = compose(&input_keys);
                 match input_state {
                     InputState::CommandCompleted(command_data) => {
+                        info!("Command completed: {:?}", command_data);
                         editor.execute_command(command_data);
                         input_keys.clear();
                     }
                     InputState::CommandInvalid(key_codes) => {
                         //　TODO: error message
+                        error!("Invalid command: {:?}", key_codes);
                         input_keys.clear();
                     }
-                    _ => {}
+                    _ => {
+                        info!("Input state: {:?}", input_state);
+                    }
                 }
             }
             Ok(Event::Resize(width, height)) => {

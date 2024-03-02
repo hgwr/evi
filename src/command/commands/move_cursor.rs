@@ -134,16 +134,18 @@ impl Command for PreviousLine {
             let num_of_chars = line.chars().count();
             let num_of_lines_on_screen = if num_of_chars == 0 {
                 1
-            } else if editor.terminal_size.height % num_of_chars as u16 == 0 {
-                editor.terminal_size.height / num_of_chars as u16
+            } else if num_of_chars % editor.terminal_size.width as usize == 0 {
+                num_of_chars / editor.terminal_size.width as usize
             } else {
-                editor.terminal_size.height / num_of_chars as u16 + 1
+                num_of_chars / editor.terminal_size.width as usize + 1
             };
 
-            if editor.cursor_position_on_screen.row > 0 {
-                editor.cursor_position_on_screen.row -= num_of_lines_on_screen;
-            } else if editor.window_position_in_buffer.row > 0 {
-                editor.window_position_in_buffer.row -= num_of_lines_on_screen as usize;
+            if editor.cursor_position_on_screen.row - num_of_lines_on_screen as u16 >= 0 {
+                editor.cursor_position_on_screen.row -= num_of_lines_on_screen as u16;
+            } else if editor.window_position_in_buffer.row - num_of_lines_on_screen >= 0 {
+                editor.window_position_in_buffer.row -= num_of_lines_on_screen;
+            } else {
+                editor.window_position_in_buffer.row = 0;
             }
 
             let mut forward_char = ForwardChar {};

@@ -28,11 +28,18 @@ pub struct CursorPositionInBuffer {
     pub col: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Mode {
+    Command,
+    Insert,
+}
+
 pub struct Editor {
     pub buffer: Buffer,
     editing_file_paths: Vec<PathBuf>,
     current_file_index: usize,
     pub is_dirty: bool,
+    pub mode: Mode,
     pub should_exit: bool,
     pub terminal_size: TerminalSize,
     pub cursor_position_on_screen: CursorPositionOnScreen,
@@ -48,6 +55,7 @@ impl Editor {
             editing_file_paths: Vec::new(),
             current_file_index: 0,
             is_dirty: false,
+            mode: Mode::Command,
             should_exit: false,
             terminal_size: TerminalSize {
                 width: 0,
@@ -100,9 +108,9 @@ impl Editor {
         }
     }
 
-    pub fn execute_command(&mut self, command_data: CommandData) {
+    pub fn execute_command(&mut self, command_data: CommandData) -> GenericResult<()> {
         let mut command = command_factory(&command_data);
-        command.execute(self);
+        command.execute(self)
     }
 
     pub fn render(self: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResult<()> {
@@ -111,6 +119,31 @@ impl Editor {
 
     pub fn content_height(&self) -> u16 {
         self.terminal_size.height - 1
+    }
+
+    pub fn display_visual_bell(&mut self) -> GenericResult<()> {
+        let mut stdout = std::io::stdout();
+        stdout.write_all(b"\x07")?;
+        stdout.flush()?;
+        Ok(())
+    }
+
+    pub fn insert_char(&mut self, key_event: crossterm::event::KeyEvent) -> GenericResult<()> {
+        if let crossterm::event::KeyCode::Char(c) = key_event.code {
+            self.buffer.insert_char(self.cursor_position_in_buffer.row, self.cursor_position_in_buffer.col, c)?;
+            let char_width = crate::util::get_char_width(c);
+            self.cursor_position_in_buffer.col += 1;
+            self.cursor_position_on_screen.col += char_width;
+            if self.cursor_position_on_screen.col >= self.terminal_size.width {
+                self.cursor_position_on_screen.col = 0;
+                if self.cursor_position_on_screen.row < self.content_height() {
+                    self.cursor_position_on_screen.row += 1;
+                } else {
+                    self.window_position_in_buffer.row += 1;
+                }
+            }
+        }
+        Ok(())
     }
 }
 

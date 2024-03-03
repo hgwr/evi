@@ -25,6 +25,9 @@ pub enum InputState {
     DigitsAndCommand(usize, KeyCode),                  // '3d', '4c' etc.
     DigitsAndCommandAndDigits(usize, KeyCode, String), // '3d4', '4c3' etc.
 
+    InputCommandComposing(KeyCode), // 'i', 'a' etc.
+    DigitsAndInputCommand(usize, KeyCode), // '3i', '4a' etc.
+
     CommandCompleted(CommandData),
     CommandInvalid(String),
 }

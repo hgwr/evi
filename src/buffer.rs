@@ -1,5 +1,7 @@
 use std::{io::Write, path::PathBuf};
 
+use crate::generic_error::GenericResult;
+
 pub struct Buffer {
     pub lines: Vec<String>,
 }
@@ -27,5 +29,11 @@ impl Buffer {
                 .expect("Failed to write file");
             writer.write_all(b"\n").expect("Failed to write file");
         }
+    }
+
+    pub fn insert_char(&mut self, row: usize, col: usize, c: char) -> GenericResult<()>{
+        let new_line = self.lines[row].chars().take(col).chain(std::iter::once(c)).chain(self.lines[row].chars().skip(col)).collect();
+        self.lines[row] = new_line;
+        Ok(())
     }
 }

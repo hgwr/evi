@@ -1,13 +1,13 @@
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::editor::Editor;
+use crate::{editor::Editor, generic_error::GenericResult};
 
 pub trait Command {
-    fn execute(&mut self, editor: &mut Editor);
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()>;
 }
 
 pub trait EditingCommand: Command {
-    fn undo(&mut self, editor: &mut Editor);
+    fn undo(&mut self, editor: &mut Editor) -> GenericResult<()>;
     fn set_range(&mut self, range: JumpCommandData);
 }
 

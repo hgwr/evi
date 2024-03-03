@@ -1,14 +1,13 @@
-use core::num;
-
 use log::info;
-use unicode_width::UnicodeWidthChar;
 
 use crate::command::base::Command;
 use crate::editor::Editor;
+use crate::generic_error::GenericResult;
+use crate::util::get_char_width;
 
 pub struct ForwardChar;
 impl Command for ForwardChar {
-    fn execute(&mut self, editor: &mut Editor) {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
         let num_of_chars = line.chars().count();
         if editor.cursor_position_in_buffer.col + 1 < num_of_chars {
@@ -16,7 +15,7 @@ impl Command for ForwardChar {
                 .chars()
                 .nth(editor.cursor_position_in_buffer.col)
                 .unwrap();
-            let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
+            let char_width = get_char_width(c);
 
             editor.cursor_position_in_buffer.col += 1;
             editor.cursor_position_on_screen.col += char_width;
@@ -29,12 +28,13 @@ impl Command for ForwardChar {
                 }
             }
         }
+        Ok(())
     }
 }
 
 pub struct BackwardChar;
 impl Command for BackwardChar {
-    fn execute(&mut self, editor: &mut Editor) {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if editor.cursor_position_in_buffer.col > 0 {
             editor.cursor_position_in_buffer.col -= 1;
             let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
@@ -42,7 +42,7 @@ impl Command for BackwardChar {
                 .chars()
                 .nth(editor.cursor_position_in_buffer.col)
                 .unwrap();
-            let char_width = UnicodeWidthChar::width(c).unwrap_or(0) as u16;
+            let char_width = get_char_width(c);
             if editor.cursor_position_on_screen.col >= char_width {
                 editor.cursor_position_on_screen.col -= char_width;
             } else {
@@ -54,34 +54,37 @@ impl Command for BackwardChar {
                 editor.cursor_position_on_screen.col = editor.terminal_size.width - char_width;
             }
         }
+        Ok(())
     }
 }
 
 pub struct MoveBeginningOfLine;
 impl Command for MoveBeginningOfLine {
-    fn execute(&mut self, editor: &mut Editor) {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let mut backward_char = BackwardChar {};
         while editor.cursor_position_in_buffer.col > 0 {
             backward_char.execute(editor);
         }
+        Ok(())
     }
 }
 
 pub struct MoveEndOfLine;
 impl Command for MoveEndOfLine {
-    fn execute(&mut self, editor: &mut Editor) {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
         let num_of_chars = line.chars().count();
         let mut forward_char = ForwardChar {};
         while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
             forward_char.execute(editor);
         }
+        Ok(())
     }
 }
 
 pub struct NextLine;
 impl Command for NextLine {
-    fn execute(&mut self, editor: &mut Editor) {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let next_row = editor.cursor_position_in_buffer.row + 1;
         if next_row < editor.buffer.lines.len() {
             let mut current_cursor_col_in_buffer = editor.cursor_position_in_buffer.col;
@@ -110,12 +113,13 @@ impl Command for NextLine {
                 forward_char.execute(editor);
             }
         }
+        Ok(())
     }
 }
 
 pub struct PreviousLine;
 impl Command for PreviousLine {
-    fn execute(&mut self, editor: &mut Editor) {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if editor.cursor_position_in_buffer.row > 0 {
             let mut current_cursor_col_in_buffer = editor.cursor_position_in_buffer.col;
             let mut move_beginning_of_line = MoveBeginningOfLine {};
@@ -145,5 +149,6 @@ impl Command for PreviousLine {
                 forward_char.execute(editor);
             }
         }
+        Ok(())
     }
 }

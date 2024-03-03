@@ -4,6 +4,7 @@ mod editor;
 mod main_loop;
 mod render;
 mod generic_error;
+mod util;
 
 use log::{error, info, warn};
 

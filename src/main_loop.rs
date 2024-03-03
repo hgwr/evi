@@ -3,13 +3,13 @@ use crossterm::{
     terminal::{self, ClearType},
     ExecutableCommand,
 };
-use std::{error::Error, io::stdout};
 use std::io::Write;
+use std::{error::Error, io::stdout};
 
 use log::{error, info, warn};
 
 use crate::command::compose::{compose, InputState};
-use crate::editor::Editor;
+use crate::editor::{Editor, Mode};
 use crate::generic_error::GenericResult;
 
 pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
@@ -26,22 +26,34 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
         let result = event::read();
         match result {
             Ok(Event::Key(key_event)) => {
-                info!("Key event: {:?}", key_event);
-                event_keys.push(key_event);
-                let input_state = compose(&event_keys);
-                match input_state {
-                    InputState::CommandCompleted(command_data) => {
-                        info!("Command completed: {:?}", command_data);
-                        editor.execute_command(command_data);
-                        event_keys.clear();
+                if editor.mode == Mode::Command {
+                    info!("Key event: {:?}", key_event);
+                    event_keys.push(key_event);
+                    let input_state = compose(&event_keys);
+                    match input_state {
+                        InputState::CommandCompleted(command_data) => {
+                            info!("Command completed: {:?}", command_data);
+                            editor.execute_command(command_data)?;
+                            event_keys.clear();
+                        }
+                        InputState::CommandInvalid(key_codes) => {
+                            //　TODO: error message
+                            error!("Invalid command: {:?}", key_codes);
+                            event_keys.clear();
+                        }
+                        _ => {
+                            info!("Input state: {:?}", input_state);
+                        }
                     }
-                    InputState::CommandInvalid(key_codes) => {
-                        //　TODO: error message
-                        error!("Invalid command: {:?}", key_codes);
-                        event_keys.clear();
-                    }
-                    _ => {
-                        info!("Input state: {:?}", input_state);
+                } else if editor.mode == Mode::Insert {
+                    match key_event.code {
+                        event::KeyCode::Esc => {
+                            editor.mode = Mode::Command;
+                            editor.status_line = "".to_string();
+                        }
+                        _ => {
+                            editor.insert_char(key_event)?;
+                        }
                     }
                 }
             }

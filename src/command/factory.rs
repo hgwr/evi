@@ -4,6 +4,7 @@ use crate::command::commands::move_cursor::*;
 use crate::command::commands::no_op_command::NoOpCommand;
 use crossterm::event::KeyCode;
 
+use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
 
 pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
@@ -44,6 +45,12 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             command: KeyCode::Char('$'),
             ..
         } => Box::new(MoveEndOfLine {}),
+
+        // insert commands
+        CommandData {
+            command: KeyCode::Char('i'),
+            ..
+        } => Box::new(Insert {}),
 
         // Control + g
         CommandData {

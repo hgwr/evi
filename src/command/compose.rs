@@ -15,7 +15,7 @@ use crate::command::key_codes::{
 // - 繰り返し指定付きの編集コマンド (4x, 3i[str] など)
 // - 範囲つきの編集コマンド (d3w, c4e, 4dl など)
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq,)]
 pub enum InputState {
     Start,
 
@@ -298,4 +298,219 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
     }
 
     input_state
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_escape() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use super::compose;
+        use super::InputState;
+
+        let mut key_events: Vec<KeyEvent> = Vec::new();
+        key_events.push(KeyEvent {
+            code: KeyCode::Esc,
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+
+        let input_state = compose(&key_events);
+        assert_eq!(input_state, InputState::CommandCompleted(super::CommandData {
+            count: 1,
+            command: KeyCode::Esc,
+            modifiers: KeyModifiers::NONE,
+            range: None,
+        }));
+    }
+
+    #[test]
+    fn test_ctrl_g() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use super::compose;
+        use super::InputState;
+
+        let mut key_events: Vec<KeyEvent> = Vec::new();
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('g'),
+            modifiers: KeyModifiers::CONTROL,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+
+        let input_state = compose(&key_events);
+        assert_eq!(input_state, InputState::CommandCompleted(super::CommandData {
+            count: 1,
+            command: KeyCode::Char('g'),
+            modifiers: KeyModifiers::CONTROL,
+            range: None,
+        }));
+    }
+
+    #[test]
+    fn test_j() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use super::compose;
+        use super::InputState;
+
+        let mut key_events: Vec<KeyEvent> = Vec::new();
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+
+        let input_state = compose(&key_events);
+        assert_eq!(input_state, InputState::CommandCompleted(super::CommandData {
+            count: 1,
+            command: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            range: None,
+        }));
+    }
+
+    #[test]
+    fn test_4j() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use super::compose;
+        use super::InputState;
+
+        let mut key_events: Vec<KeyEvent> = Vec::new();
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('4'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+
+        let input_state = compose(&key_events);
+        assert_eq!(input_state, InputState::CommandCompleted(super::CommandData {
+            count: 4,
+            command: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            range: None,
+        }));
+    }
+
+    #[test]
+    fn test_dd() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use super::compose;
+        use super::InputState;
+
+        let mut key_events: Vec<KeyEvent> = Vec::new();
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+
+        let input_state = compose(&key_events);
+        assert_eq!(input_state, InputState::CommandCompleted(super::CommandData {
+            count: 1,
+            command: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+            range: Some(super::JumpCommandData {
+                count: 1,
+                command: KeyCode::Char('d'),
+            }),
+        }));
+    }
+
+    #[test]
+    fn test_d2j() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use super::compose;
+        use super::InputState;
+
+        let mut key_events: Vec<KeyEvent> = Vec::new();
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('2'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+
+        let input_state = compose(&key_events);
+        assert_eq!(input_state, InputState::CommandCompleted(super::CommandData {
+            count: 1,
+            command: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+            range: Some(super::JumpCommandData {
+                count: 2,
+                command: KeyCode::Char('j'),
+            }),
+        }));
+    }
+
+    #[test]
+    fn test_3d4j() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use super::compose;
+        use super::InputState;
+
+        let mut key_events: Vec<KeyEvent> = Vec::new();
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('3'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('4'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('j'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE
+        });
+
+        let input_state = compose(&key_events);
+        assert_eq!(input_state, InputState::CommandCompleted(super::CommandData {
+            count: 3,
+            command: KeyCode::Char('d'),
+            modifiers: KeyModifiers::NONE,
+            range: Some(super::JumpCommandData {
+                count: 4,
+                command: KeyCode::Char('j'),
+            }),
+        }));
+    }
 }

@@ -11,13 +11,13 @@ pub trait EditingCommand: Command {
     fn set_range(&mut self, range: JumpCommandData);
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct JumpCommandData {
     pub count: usize,
     pub command: KeyCode,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CommandData {
     pub count: usize,
     pub command: KeyCode,

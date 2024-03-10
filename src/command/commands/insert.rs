@@ -3,6 +3,7 @@ use log::info;
 use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
+use crate::util::split_line;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Insert {
@@ -44,16 +45,12 @@ impl Command for Insert {
             if let Some(text) = &self.text {
                 let row = original_cursor_data.cursor_position_in_buffer.row;
                 let col = original_cursor_data.cursor_position_in_buffer.col;
-                let mut input_text_lines: Vec<&str> = text.lines().collect();
+                let input_text_lines: Vec<&str> = split_line(text);
                 if input_text_lines.len() == 0 {
                     panic!("input_text_lines.len() == 0, text: '{:?}'", text);
                 }
                 info!("input_text_lines: {:?}", input_text_lines);
                 info!("input_text_lines.len(): {:?}", input_text_lines.len());
-                // TODO: fix bug
-                if text == "\n" {
-                    input_text_lines = vec!["", ""];
-                }
                 if input_text_lines.len() == 1 {
                     let line = &editor.buffer.lines[row];
                     let new_line: String = line
@@ -63,21 +60,16 @@ impl Command for Insert {
                         .collect();
                     editor.buffer.lines[row] = new_line;
                 } else if input_text_lines.len() >= 2 {
+                    let last_input_line = input_text_lines[input_text_lines.len() - 1];
                     let first_line = editor.buffer.lines[row].clone();
                     let last_line = editor.buffer.lines[row + input_text_lines.len() - 1].clone();
                     let new_first_line: String = first_line
                         .chars()
                         .take(col)
-                        .chain(first_line.chars().skip(col + input_text_lines[0].len()))
                         .collect();
                     let new_last_line: String = last_line
                         .chars()
-                        .take(input_text_lines[input_text_lines.len() - 1].len())
-                        .chain(
-                            last_line
-                                .chars()
-                                .skip(input_text_lines[input_text_lines.len() - 1].len()),
-                        )
+                        .skip(last_input_line.len())
                         .collect();
                     editor.buffer.lines[row] = new_first_line + new_last_line.as_str();
                     for _ in 0..input_text_lines.len() - 1 {

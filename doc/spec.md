@@ -12,25 +12,24 @@ evi is a vi clone editor written in Rust. It is a simple and lightweight text ed
 
 ## Requirement
 
-- テキストファイルを開いて画面に表示する。
-- 画面上のカーソルを操作し、開いたテキストファイルの任意の位置を画面に表示する。
-- テキストファイルの内容を変更する。
-- ファイルの保存。
-- ファイルの新規作成。
-- ファイルの読み込み。
-- ファイルの削除。
-- 行番号表示。
-- カーソル移動（上下左右、単語単位、行頭・行末への移動）。
-- テキストの挿入（インサートモード）。
-- テキストの削除（カーソル位置の文字、行の削除）。
-- テキストのコピー（ビジュアルモードでの選択範囲）。
-- テキストの貼り付け。
-- テキストの検索（前方、後方）。
-- テキストの置換（指定範囲内、全ファイル内）。
-- 取り消し（Undo）。
-- やり直し（Redo）。
-- 自動インデント（新しい行の開始時に前行と同じインデントを適用）。
-- 折り返し表示（長い行を画面幅に合わせて表示）。
-- シンタックスハイライト（オプション、言語に応じた色分け）。
-- 設定ファイルによる挙動のカスタマイズ。
-
+- Open a text file and display it on the screen.
+- Manipulate the cursor on the screen to display any position in the opened text file on the screen.
+- Modify the contents of a text file.
+- Save file.
+- Create a new file.
+- Loading files.
+- Delete files.
+- Line number display.
+- Cursor movement (up/down, left/right, word by word, movement to the beginning/end of the line).
+- Inserting text (insert mode).
+- Delete text (delete character at cursor, line).
+- Copy text (selection in visual mode).
+- Paste text.
+- Search for text (forward, backward).
+- Text replacement (within specified range, in all files).
+- Undo.
+- Redo.
+- Automatic indentation (applies the same indentation as the previous line when starting a new line).
+- Wrap display (display long lines to fit screen width).
+- Syntax highlighting (optional, color-coded according to language).
+- Customize behavior with configuration files.

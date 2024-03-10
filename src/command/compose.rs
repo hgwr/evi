@@ -8,13 +8,13 @@ use crate::command::key_codes::{
     is_jump_command,
 };
 
-// コマンドのパターンのリスト
+// list of command patterns
 //
-// - 即時移動コマンド (l, h, j, k など)
-// - 即時編集コマンド (i, x, d, ｓ など)
-// - 繰り返し指定付きの移動コマンド (3l, 4h, 5j, 6k など)
-// - 繰り返し指定付きの編集コマンド (4x, 3i[str] など)
-// - 範囲つきの編集コマンド (d3w, c4e, 4dl など)
+// - immediate movement commands (l, h, j, k, etc.)
+// - immediate editing commands (i, x, d, s, etc.)
+// - movement commands with repeat specifications (3l, 4h, 5j, 6k, etc.)
+// - Edit command with repeat specification (4x, 3i[str], etc.)
+// - Edit commands with ranges (d3w, c4e, 4dl, etc.)
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum InputState {

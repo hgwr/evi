@@ -16,15 +16,21 @@ use crate::command::key_codes::{
 // - Edit command with repeat specification (4x, 3i[str], etc.)
 // - Edit commands with ranges (d3w, c4e, 4dl, etc.)
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KeyData {
+    key_code: KeyCode,
+    modifiers: KeyModifiers,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum InputState {
     Start,
 
     AccumulateDigits(String),                          // Entering numbers
-    CommandComposing(KeyCode),                         // 'd', 'c' etc.
-    CommandAndDigits(KeyCode, String),                 // 'd3', 'c4' etc.
-    DigitsAndCommand(usize, KeyCode),                  // '3d', '4c' etc.
-    DigitsAndCommandAndDigits(usize, KeyCode, String), // '3d4', '4c3' etc.
+    CommandComposing(KeyData),                         // 'd', 'c' etc.
+    CommandAndDigits(KeyData, String),                 // 'd3', 'c4' etc.
+    DigitsAndCommand(usize, KeyData),                  // '3d', '4c' etc.
+    DigitsAndCommandAndDigits(usize, KeyData, String), // '3d4', '4c3' etc.
 
     CommandCompleted(CommandData),
     CommandInvalid(String),
@@ -119,7 +125,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                         modifiers: *modifiers,
                         range: None,
                     });
-                } else if let InputState::CommandComposing(command) = input_state {
+                } else if let InputState::CommandComposing(composing) = input_state {
                     let range = Some(JumpCommandData {
                         count: 1,
                         key_code: *code,
@@ -127,11 +133,11 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     });
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
-                        key_code: command,
-                        modifiers: KeyModifiers::NONE,
+                        key_code: composing.key_code,
+                        modifiers: composing.modifiers,
                         range,
                     });
-                } else if let InputState::CommandAndDigits(command, digits) = input_state {
+                } else if let InputState::CommandAndDigits(composing, digits) = input_state {
                     let range = Some(JumpCommandData {
                         count: digits.parse().unwrap(),
                         key_code: *code,
@@ -139,11 +145,11 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     });
                     return InputState::CommandCompleted(CommandData {
                         count: 1,
-                        key_code: command,
-                        modifiers: KeyModifiers::NONE,
+                        key_code: composing.key_code,
+                        modifiers: composing.modifiers,
                         range,
                     });
-                } else if let InputState::DigitsAndCommand(count, command) = input_state {
+                } else if let InputState::DigitsAndCommand(count, composing) = input_state {
                     let range = Some(JumpCommandData {
                         count: 1,
                         key_code: *code,
@@ -151,11 +157,11 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     });
                     return InputState::CommandCompleted(CommandData {
                         count,
-                        key_code: command,
-                        modifiers: KeyModifiers::NONE,
+                        key_code: composing.key_code,
+                        modifiers: composing.modifiers,
                         range,
                     });
-                } else if let InputState::DigitsAndCommandAndDigits(count, command, digits) =
+                } else if let InputState::DigitsAndCommandAndDigits(count, composing, digits) =
                     input_state
                 {
                     let range = Some(JumpCommandData {
@@ -165,8 +171,8 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     });
                     return InputState::CommandCompleted(CommandData {
                         count,
-                        key_code: command,
-                        modifiers: KeyModifiers::NONE,
+                        key_code: composing.key_code,
+                        modifiers: composing.modifiers,
                         range,
                     });
                 } else {
@@ -203,12 +209,18 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 && is_editing_command_with_range(code) =>
             {
                 if let InputState::Start = input_state {
-                    input_state = InputState::CommandComposing(*code);
+                    input_state = InputState::CommandComposing(KeyData {
+                        key_code: *code,
+                        modifiers: *modifiers,
+                    });
                 } else if let InputState::AccumulateDigits(digits) = input_state {
                     let count = digits.parse().unwrap();
-                    input_state = InputState::DigitsAndCommand(count, *code);
-                } else if let InputState::CommandComposing(command) = input_state {
-                    if command == *code {
+                    input_state = InputState::DigitsAndCommand(count, KeyData {
+                        key_code: *code,
+                        modifiers: *modifiers,
+                    });
+                } else if let InputState::CommandComposing(composing) = input_state {
+                    if composing.key_code == *code {
                         // dd, cc, yy, etc.
                         let range = Some(JumpCommandData {
                             count: 1,
@@ -217,8 +229,8 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                         });
                         return InputState::CommandCompleted(CommandData {
                             count: 1,
-                            key_code: command,
-                            modifiers: *modifiers,
+                            key_code: composing.key_code,
+                            modifiers: composing.modifiers,
                             range,
                         });
                     } else {
@@ -229,8 +241,8 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                         "Invalid command: {:?}{:?}{:?}",
                         command, digits, event
                     ));
-                } else if let InputState::DigitsAndCommand(count, command) = input_state {
-                    if command == *code {
+                } else if let InputState::DigitsAndCommand(count, composing) = input_state {
+                    if composing.key_code == *code {
                         // 3dd, 4cc, 5yy, etc.
                         let range = Some(JumpCommandData {
                             count: count,
@@ -239,14 +251,14 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                         });
                         return InputState::CommandCompleted(CommandData {
                             count: 1,
-                            key_code: command,
-                            modifiers: KeyModifiers::NONE,
+                            key_code: composing.key_code,
+                            modifiers: composing.modifiers,
                             range,
                         });
                     } else {
                         return InputState::CommandInvalid(format!(
                             "Invalid command: {:?}{:?}{:?}",
-                            command, count, event
+                            composing.key_code, count, event
                         ));
                     }
                 } else if let InputState::DigitsAndCommandAndDigits(count, command, digits) =

@@ -230,6 +230,58 @@ impl Editor {
         }
         Ok(())
     }
+
+    pub fn backward_delete_char(&mut self) -> GenericResult<()> {
+        if self.cursor_position_in_buffer.col > 0 && self.last_input_string.len() > 0 {
+            self.buffer.delete_char(
+                self.cursor_position_in_buffer.row,
+                self.cursor_position_in_buffer.col - 1,
+            )?;
+            self.last_input_string.pop();
+            self.cursor_position_in_buffer.col -= 1;
+            let char = self.buffer.get_char(
+                self.cursor_position_in_buffer.row,
+                self.cursor_position_in_buffer.col,
+            );
+            if let Some(char) = char {
+                let char_width = crate::util::get_char_width(char);
+                self.cursor_position_on_screen.col -= char_width;
+                if self.cursor_position_on_screen.col >= self.terminal_size.width {
+                    self.cursor_position_on_screen.col = self.terminal_size.width - 1;
+                    if self.cursor_position_on_screen.row > 0 {
+                        self.cursor_position_on_screen.row -= 1;
+                    } else if self.window_position_in_buffer.row > 0 {
+                        self.window_position_in_buffer.row -= 1;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn append_new_line(&mut self) -> GenericResult<()> {
+        let rest_of_line = self.buffer.lines[self.cursor_position_in_buffer.row]
+            .chars()
+            .skip(self.cursor_position_in_buffer.col)
+            .collect::<String>();
+        let new_line = self.buffer.lines[self.cursor_position_in_buffer.row]
+            .chars()
+            .take(self.cursor_position_in_buffer.col)
+            .collect::<String>();
+        self.buffer.lines[self.cursor_position_in_buffer.row] = new_line;
+        self.buffer.lines.insert(self.cursor_position_in_buffer.row + 1, rest_of_line);
+        self.cursor_position_in_buffer.row += 1;
+        self.cursor_position_in_buffer.col = 0;
+        if self.cursor_position_on_screen.row < self.content_height() {
+            self.cursor_position_on_screen.row += 1;
+        } else {
+            self.window_position_in_buffer.row += 1;
+        }
+        self.cursor_position_on_screen.col = 0;
+        self.last_input_string.push('\n');
+        Ok(())
+    }
+
 }
 
 impl Drop for Editor {

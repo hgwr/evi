@@ -49,4 +49,19 @@ impl Buffer {
         self.lines[row] = new_line;
         Ok(())
     }
+
+    pub fn delete_char(&mut self, row: usize, col: usize) -> GenericResult<()> {
+        let new_line = self.lines[row]
+            .chars()
+            .take(col)
+            .chain(self.lines[row].chars().skip(col + 1))
+            .collect();
+        self.lines[row] = new_line;
+        Ok(())
+    }
+
+    pub fn get_char(&self, row: usize, col: usize) -> Option<char> {
+        self.lines.get(row)?.chars().nth(col)
+    }
+
 }

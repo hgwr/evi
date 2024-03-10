@@ -18,8 +18,16 @@ use crate::command::key_codes::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeyData {
-    key_code: KeyCode,
-    modifiers: KeyModifiers,
+    pub key_code: KeyCode,
+    pub modifiers: KeyModifiers,
+}
+impl From<KeyEvent> for KeyData {
+    fn from(event: KeyEvent) -> Self {
+        KeyData {
+            key_code: event.code,
+            modifiers: event.modifiers,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -1,14 +1,14 @@
 use crossterm::{
-    event::{self, Event, KeyEvent},
+    event::{self, Event, KeyEvent, KeyModifiers},
     terminal::{self, ClearType},
     ExecutableCommand,
 };
-use std::io::Write;
 use std::io::stdout;
+use std::io::Write;
 
 use log::{error, info};
 
-use crate::command::compose::{compose, InputState};
+use crate::command::compose::{compose, InputState, KeyData};
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
@@ -46,10 +46,34 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                         }
                     }
                 } else if editor.is_insert_mode() {
-                    match key_event.code {
-                        event::KeyCode::Esc => {
+                    let key_data: KeyData = key_event.into();
+                    match key_data {
+                        KeyData { key_code: event::KeyCode::Enter, .. } => {
+                            editor.append_new_line()?;
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Esc,
+                            ..
+                        } => {
                             editor.set_command_mode();
                             editor.status_line = "".to_string();
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Backspace,
+                            ..
+                        }
+                        | KeyData {
+                            key_code: event::KeyCode::Char('h'),
+                            modifiers: KeyModifiers::CONTROL,
+                        } => {
+                            editor.backward_delete_char()?;
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Char('l'),
+                            modifiers: KeyModifiers::CONTROL,
+                            ..
+                        } => {
+                            editor.render(&mut stdout)?;
                         }
                         _ => {
                             editor.insert_char(key_event)?;

@@ -8,7 +8,7 @@ use crossterm::{
 
 use log::info;
 
-use crate::command::base::CommandData;
+use crate::command::base::{Command, CommandData};
 use crate::command::factory::command_factory;
 use crate::render::render;
 use crate::{buffer::Buffer, command::base::ExecutedCommand, generic_error::GenericResult};
@@ -254,6 +254,19 @@ impl Editor {
                         self.window_position_in_buffer.row -= 1;
                     }
                 }
+            }
+        } else if self.cursor_position_in_buffer.col == 0 && self.last_input_string.len() > 0 {
+            self.last_input_string.pop();
+            if self.cursor_position_in_buffer.row > 0 {
+                let rest_of_line = self.buffer.lines[self.cursor_position_in_buffer.row].clone();
+                self.buffer.lines.remove(self.cursor_position_in_buffer.row);
+                let mut previous_line = crate::command::commands::move_cursor::PreviousLine {};
+                previous_line.execute(self)?;
+                let mut move_end_of_line = crate::command::commands::move_cursor::MoveEndOfLine {};
+                move_end_of_line.execute(self)?;
+                self.buffer.lines[self.cursor_position_in_buffer.row] += &rest_of_line;
+                let mut forward_char = crate::command::commands::move_cursor::ForwardChar {};
+                forward_char.execute(self)?;
             }
         }
         Ok(())

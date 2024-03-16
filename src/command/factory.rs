@@ -57,6 +57,10 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('w'),
             ..
         } => Box::new(ForwardWord {}),
+        CommandData {
+            key_code: KeyCode::Char('b'),
+            ..
+        } => Box::new(BackwardWord {}),
 
         // insert commands
         CommandData {

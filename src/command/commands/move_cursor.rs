@@ -162,7 +162,6 @@ impl Command for ForwardWord {
         forward_char.execute(editor)?;
         'outer: loop {
             if editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                let c = editor.current_char().unwrap();
                 while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
                     let c = editor.current_char().unwrap();
                     if c.is_whitespace() {
@@ -193,6 +192,56 @@ impl Command for ForwardWord {
             } else {
                 break;
             }
+        }
+        Ok(())
+    }
+}
+
+pub struct BackwardWord;
+impl Command for BackwardWord {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        let mut backward_char = BackwardChar {};
+        if editor.cursor_position_in_buffer.col > 0 {
+            backward_char.execute(editor)?;
+        }
+        'outer: loop {
+            if editor.cursor_position_in_buffer.col > 0 {
+                while editor.cursor_position_in_buffer.col > 0 {
+                    let c = editor.current_char().unwrap();
+                    if !c.is_whitespace() {
+                        break;
+                    }
+                    backward_char.execute(editor)?;
+                }
+                while editor.cursor_position_in_buffer.col > 0 {
+                    let c = editor.current_char().unwrap();
+                    if c.is_whitespace() {
+                        break 'outer;
+                    }
+                    backward_char.execute(editor)?;
+                }
+                if editor.cursor_position_in_buffer.col == 0 {
+                    break 'outer;
+                }
+            } else if editor.cursor_position_in_buffer.row > 0 {
+                let mut previous_line = PreviousLine {};
+                previous_line.execute(editor)?;
+                let mut move_end_of_line = MoveEndOfLine {};
+                move_end_of_line.execute(editor)?;
+                while editor.cursor_position_in_buffer.col > 0 {
+                    let c = editor.current_char().unwrap();
+                    if c.is_whitespace() {
+                        break 'outer;
+                    }
+                    backward_char.execute(editor)?;
+                }
+            } else {
+                break;
+            }
+        }
+        if editor.cursor_position_in_buffer.col != 0 {
+            let mut forward_char = ForwardChar {};
+            forward_char.execute(editor)?;
         }
         Ok(())
     }

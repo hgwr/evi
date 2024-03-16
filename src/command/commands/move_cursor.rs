@@ -163,29 +163,19 @@ impl Command for ForwardWord {
         'outer: loop {
             if editor.cursor_position_in_buffer.col + 1 < num_of_chars {
                 let c = editor.current_char().unwrap();
-                if c.is_whitespace() {
-                    while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                        let c = editor.current_char().unwrap();
-                        if !c.is_whitespace() {
-                            break 'outer;
-                        }
-                        forward_char.execute(editor)?;
+                while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
+                    let c = editor.current_char().unwrap();
+                    if c.is_whitespace() {
+                        break;
                     }
-                } else {
-                    while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                        let c = editor.current_char().unwrap();
-                        if c.is_whitespace() {
-                            break;
-                        }
-                        forward_char.execute(editor)?;
+                    forward_char.execute(editor)?;
+                }
+                while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
+                    let c = editor.current_char().unwrap();
+                    if !c.is_whitespace() {
+                        break 'outer;
                     }
-                    while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                        let c = editor.current_char().unwrap();
-                        if !c.is_whitespace() {
-                            break 'outer;
-                        }
-                        forward_char.execute(editor)?;
-                    }
+                    forward_char.execute(editor)?;
                 }
             } else if editor.cursor_position_in_buffer.row + 1 < editor.buffer.lines.len() {
                 let mut next_line = NextLine {};

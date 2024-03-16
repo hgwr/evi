@@ -52,6 +52,12 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             ..
         } => Box::new(MoveEndOfLine {}),
 
+        // jump commands
+        CommandData {
+            key_code: KeyCode::Char('w'),
+            ..
+        } => Box::new(ForwardWord {}),
+
         // insert commands
         CommandData {
             key_code: KeyCode::Char('i'),

@@ -1,3 +1,5 @@
+use core::num;
+
 use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
@@ -148,6 +150,79 @@ impl Command for PreviousLine {
             let mut forward_char = ForwardChar {};
             for _ in 0..current_cursor_col_in_buffer {
                 forward_char.execute(editor)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+pub struct ForwardWord;
+impl Command for ForwardWord {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        let mut forward_char = ForwardChar {};
+        let mut num_of_chars = editor.buffer.lines[editor.cursor_position_in_buffer.row]
+            .chars()
+            .count();
+        forward_char.execute(editor)?;
+        'outer: loop {
+            if editor.cursor_position_in_buffer.col + 1 < num_of_chars {
+                let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
+                    .chars()
+                    .nth(editor.cursor_position_in_buffer.col)
+                    .unwrap();
+                if c.is_whitespace() {
+                    while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
+                        let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
+                            .chars()
+                            .nth(editor.cursor_position_in_buffer.col)
+                            .unwrap();
+                        if !c.is_whitespace() {
+                            break 'outer;
+                        }
+                        forward_char.execute(editor)?;
+                    }
+                } else {
+                    while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
+                        let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
+                            .chars()
+                            .nth(editor.cursor_position_in_buffer.col)
+                            .unwrap();
+                        if c.is_whitespace() {
+                            break;
+                        }
+                        forward_char.execute(editor)?;
+                    }
+                    while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
+                        let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
+                            .chars()
+                            .nth(editor.cursor_position_in_buffer.col)
+                            .unwrap();
+                        if !c.is_whitespace() {
+                            break 'outer;
+                        }
+                        forward_char.execute(editor)?;
+                    }
+                }
+            } else if editor.cursor_position_in_buffer.row + 1 < editor.buffer.lines.len() {
+                let mut next_line = NextLine {};
+                next_line.execute(editor)?;
+                let mut move_beginning_of_line = MoveBeginningOfLine {};
+                move_beginning_of_line.execute(editor)?;
+                num_of_chars = editor.buffer.lines[editor.cursor_position_in_buffer.row]
+                    .chars()
+                    .count();
+                while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
+                    let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
+                        .chars()
+                        .nth(editor.cursor_position_in_buffer.col)
+                        .unwrap();
+                    if !c.is_whitespace() {
+                        break 'outer;
+                    }
+                    forward_char.execute(editor)?;
+                }
+            } else {
+                break;
             }
         }
         Ok(())

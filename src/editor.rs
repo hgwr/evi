@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{error::Error, io::Write};
 use std::path::PathBuf;
 
 use crossterm::{
@@ -56,7 +56,7 @@ pub struct Editor {
     pub cursor_position_in_buffer: CursorPositionInBuffer,
     pub window_position_in_buffer: CursorPositionInBuffer,
     pub status_line: String,
-    pub command_history: Vec<ExecutedCommand>,
+    pub command_history: Vec<Vec<ExecutedCommand>>,
     pub last_input_string: String,
 }
 
@@ -128,11 +128,48 @@ impl Editor {
             Mode::Command => {}
             Mode::Insert => {
                 self.mode = Mode::Command;
-                if let Some(mut last_command) = self.command_history.pop() {
-                    last_command
+                if let Some(mut last_command_chunk) = self.command_history.pop() {
+                    let mut last_executed_command = last_command_chunk.pop().unwrap();
+                    last_executed_command
                         .command
                         .set_text(self.last_input_string.clone());
-                    self.command_history.push(last_command);
+
+                    let count = last_executed_command.command_data.count;
+                    if count == 1 {
+                        self.command_history.push(vec![last_executed_command]);
+                    } else if count >= 2 {
+                        last_executed_command.command_data.count = 1;
+                        let command_data: CommandData = last_executed_command.command_data.clone();
+                        let mut command_opt: Option<Box<dyn Command>> = Some(last_executed_command.command);
+                        let mut command_series: Vec<ExecutedCommand> = Vec::new();
+                        for _ in 1..count {
+                            if let Some(mut command) = command_opt {
+                                let redo_result: Result<Option<Box<dyn Command>>, Box<dyn Error + Send + Sync>> = command.redo(self);
+                                command_series.push(ExecutedCommand {
+                                    command_data: command_data.clone(),
+                                    command,
+                                });
+                                info!("command_series.len(): {}", command_series.len());
+                                if let Ok(Some(next_command)) = redo_result {
+                                    command_opt = Some(next_command);
+                                } else {
+                                    command_opt = None;
+                                    break;
+                                }
+                            }
+                        }
+                        if let Some(command) = command_opt {
+                            command_series.push(ExecutedCommand {
+                                command_data: command_data.clone(),
+                                command,
+                            });
+                            info!("command_series.len(): {}", command_series.len());
+                        }
+                        info!("### command_series.len(): {}", command_series.len());
+                        self.command_history.push(command_series);
+                    } else {
+                        panic!("count: {}", count);
+                    }
                     info!("input string: {}", self.last_input_string);
                 }
                 self.status_line = "".to_string();
@@ -175,19 +212,28 @@ impl Editor {
 
     pub fn execute_command(&mut self, command_data: CommandData) -> GenericResult<()> {
         let mut command = command_factory(&command_data);
-        let result = command.execute(self);
+        if !command.is_modeful() {
+            for _ in 0..command_data.count {
+                command.execute(self)?;
+            }
+        } else {
+            command.execute(self)?;
+        }
         if command.is_undoable() {
-            self.command_history.push(ExecutedCommand {
+            self.command_history.push(vec![ExecutedCommand {
                 command_data,
                 command,
-            });
+            }]);
         }
-        result
+        Ok(())
     }
 
     pub fn undo(&mut self) -> GenericResult<()> {
-        if let Some(mut executed_command) = self.command_history.pop() {
-            executed_command.command.undo(self)
+        if let Some(mut last_command_chunk) = self.command_history.pop() {
+            while let Some(mut executed_command) = last_command_chunk.pop() {
+                executed_command.command.undo(self)?;
+            }
+            Ok(())
         } else {
             Ok(())
         }
@@ -223,26 +269,25 @@ impl Editor {
             .unwrap_or(0)
     }
 
-    pub fn insert_char(&mut self, key_event: crossterm::event::KeyEvent) -> GenericResult<()> {
-        if let crossterm::event::KeyCode::Char(c) = key_event.code {
-            self.buffer.insert_char(
-                self.cursor_position_in_buffer.row,
-                self.cursor_position_in_buffer.col,
-                c,
-            )?;
-            self.last_input_string.push(c);
-            let char_width = crate::util::get_char_width(c);
-            self.cursor_position_in_buffer.col += 1;
-            self.cursor_position_on_screen.col += char_width;
-            if self.cursor_position_on_screen.col >= self.terminal_size.width {
-                self.cursor_position_on_screen.col = 0;
-                if self.cursor_position_on_screen.row < self.content_height() {
-                    self.cursor_position_on_screen.row += 1;
-                } else {
-                    self.window_position_in_buffer.row += 1;
-                }
+    pub fn insert_char(&mut self, c: char) -> GenericResult<()> {
+        self.buffer.insert_char(
+            self.cursor_position_in_buffer.row,
+            self.cursor_position_in_buffer.col,
+            c,
+        )?;
+        self.last_input_string.push(c);
+        let char_width = crate::util::get_char_width(c);
+        self.cursor_position_in_buffer.col += 1;
+        self.cursor_position_on_screen.col += char_width;
+        if self.cursor_position_on_screen.col >= self.terminal_size.width {
+            self.cursor_position_on_screen.col = 0;
+            if self.cursor_position_on_screen.row < self.content_height() {
+                self.cursor_position_on_screen.row += 1;
+            } else {
+                self.window_position_in_buffer.row += 1;
             }
         }
+
         Ok(())
     }
 
@@ -297,7 +342,9 @@ impl Editor {
             .take(self.cursor_position_in_buffer.col)
             .collect::<String>();
         self.buffer.lines[self.cursor_position_in_buffer.row] = new_line;
-        self.buffer.lines.insert(self.cursor_position_in_buffer.row + 1, rest_of_line);
+        self.buffer
+            .lines
+            .insert(self.cursor_position_in_buffer.row + 1, rest_of_line);
         self.cursor_position_in_buffer.row += 1;
         self.cursor_position_in_buffer.col = 0;
         if self.cursor_position_on_screen.row < self.content_height() {
@@ -309,7 +356,6 @@ impl Editor {
         self.last_input_string.push('\n');
         Ok(())
     }
-
 }
 
 impl Drop for Editor {

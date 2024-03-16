@@ -48,7 +48,10 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                 } else if editor.is_insert_mode() {
                     let key_data: KeyData = key_event.into();
                     match key_data {
-                        KeyData { key_code: event::KeyCode::Enter, .. } => {
+                        KeyData {
+                            key_code: event::KeyCode::Enter,
+                            ..
+                        } => {
                             editor.append_new_line()?;
                         }
                         KeyData {
@@ -76,7 +79,9 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                             editor.render(&mut stdout)?;
                         }
                         _ => {
-                            editor.insert_char(key_event)?;
+                            if let crossterm::event::KeyCode::Char(c) = key_event.code {
+                                editor.insert_char(c)?;
+                            }
                         }
                     }
                 }

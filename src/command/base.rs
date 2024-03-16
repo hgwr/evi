@@ -4,6 +4,9 @@ use crate::{editor::Editor, generic_error::GenericResult};
 
 pub trait Command {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()>;
+    fn is_modeful(&self) -> bool {
+        false
+    }
     fn is_undoable(&self) -> bool {
         false
     }
@@ -11,6 +14,11 @@ pub trait Command {
         let _ = editor;
         // do nothing
         Ok(())
+    }
+    fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
+        let _ = editor;
+        // do nothing
+        Ok(None)
     }
     fn set_text(&mut self, _text: String) {
         // do nothing

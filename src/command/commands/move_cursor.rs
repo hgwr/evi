@@ -1,5 +1,3 @@
-use core::num;
-
 use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
@@ -160,22 +158,14 @@ pub struct ForwardWord;
 impl Command for ForwardWord {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let mut forward_char = ForwardChar {};
-        let mut num_of_chars = editor.buffer.lines[editor.cursor_position_in_buffer.row]
-            .chars()
-            .count();
+        let mut num_of_chars = editor.num_of_current_line_chars();
         forward_char.execute(editor)?;
         'outer: loop {
             if editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
-                    .chars()
-                    .nth(editor.cursor_position_in_buffer.col)
-                    .unwrap();
+                let c = editor.current_char().unwrap();
                 if c.is_whitespace() {
                     while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                        let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
-                            .chars()
-                            .nth(editor.cursor_position_in_buffer.col)
-                            .unwrap();
+                        let c = editor.current_char().unwrap();
                         if !c.is_whitespace() {
                             break 'outer;
                         }
@@ -183,20 +173,14 @@ impl Command for ForwardWord {
                     }
                 } else {
                     while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                        let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
-                            .chars()
-                            .nth(editor.cursor_position_in_buffer.col)
-                            .unwrap();
+                        let c = editor.current_char().unwrap();
                         if c.is_whitespace() {
                             break;
                         }
                         forward_char.execute(editor)?;
                     }
                     while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                        let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
-                            .chars()
-                            .nth(editor.cursor_position_in_buffer.col)
-                            .unwrap();
+                        let c = editor.current_char().unwrap();
                         if !c.is_whitespace() {
                             break 'outer;
                         }
@@ -208,14 +192,9 @@ impl Command for ForwardWord {
                 next_line.execute(editor)?;
                 let mut move_beginning_of_line = MoveBeginningOfLine {};
                 move_beginning_of_line.execute(editor)?;
-                num_of_chars = editor.buffer.lines[editor.cursor_position_in_buffer.row]
-                    .chars()
-                    .count();
+                num_of_chars = editor.num_of_current_line_chars();
                 while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                    let c = editor.buffer.lines[editor.cursor_position_in_buffer.row]
-                        .chars()
-                        .nth(editor.cursor_position_in_buffer.col)
-                        .unwrap();
+                    let c = editor.current_char().unwrap();
                     if !c.is_whitespace() {
                         break 'outer;
                     }

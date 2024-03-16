@@ -208,6 +208,21 @@ impl Editor {
         Ok(())
     }
 
+    pub fn current_char(&self) -> Option<char> {
+        self.buffer.get_char(
+            self.cursor_position_in_buffer.row,
+            self.cursor_position_in_buffer.col,
+        )
+    }
+
+    pub fn num_of_current_line_chars(&self) -> usize {
+        self.buffer
+            .lines
+            .get(self.cursor_position_in_buffer.row)
+            .map(|line| line.chars().count())
+            .unwrap_or(0)
+    }
+
     pub fn insert_char(&mut self, key_event: crossterm::event::KeyEvent) -> GenericResult<()> {
         if let crossterm::event::KeyCode::Char(c) = key_event.code {
             self.buffer.insert_char(

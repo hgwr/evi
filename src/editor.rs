@@ -270,14 +270,14 @@ impl Editor {
         Ok(())
     }
 
-    pub fn current_char(&self) -> Option<char> {
+    pub fn get_current_char(&self) -> Option<char> {
         self.buffer.get_char(
             self.cursor_position_in_buffer.row,
             self.cursor_position_in_buffer.col,
         )
     }
 
-    pub fn num_of_current_line_chars(&self) -> usize {
+    pub fn get_num_of_current_line_chars(&self) -> usize {
         self.buffer
             .lines
             .get(self.cursor_position_in_buffer.row)

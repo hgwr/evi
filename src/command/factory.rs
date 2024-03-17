@@ -4,6 +4,7 @@ use crate::command::commands::move_cursor::*;
 use crate::command::commands::no_op_command::NoOpCommand;
 use crossterm::event::KeyCode;
 
+use super::commands::append::Append;
 use super::commands::delete::DeleteChar;
 use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
@@ -67,6 +68,12 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('i'),
             ..
         } => Box::new(Insert::default()),
+
+        // append commands
+        CommandData {
+            key_code: KeyCode::Char('a'),
+            ..
+        } => Box::new(Append::default()),
 
         // delete commands
         CommandData {

@@ -158,19 +158,19 @@ pub struct ForwardWord;
 impl Command for ForwardWord {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let mut forward_char = ForwardChar {};
-        let mut num_of_chars = editor.num_of_current_line_chars();
+        let mut num_of_chars = editor.get_num_of_current_line_chars();
         forward_char.execute(editor)?;
         'outer: loop {
             if editor.cursor_position_in_buffer.col + 1 < num_of_chars {
                 while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                    let c = editor.current_char().unwrap();
+                    let c = editor.get_current_char().unwrap();
                     if c.is_whitespace() {
                         break;
                     }
                     forward_char.execute(editor)?;
                 }
                 while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                    let c = editor.current_char().unwrap();
+                    let c = editor.get_current_char().unwrap();
                     if !c.is_whitespace() {
                         break 'outer;
                     }
@@ -181,9 +181,9 @@ impl Command for ForwardWord {
                 next_line.execute(editor)?;
                 let mut move_beginning_of_line = MoveBeginningOfLine {};
                 move_beginning_of_line.execute(editor)?;
-                num_of_chars = editor.num_of_current_line_chars();
+                num_of_chars = editor.get_num_of_current_line_chars();
                 while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
-                    let c = editor.current_char().unwrap();
+                    let c = editor.get_current_char().unwrap();
                     if !c.is_whitespace() {
                         break 'outer;
                     }
@@ -207,14 +207,14 @@ impl Command for BackwardWord {
         'outer: loop {
             if editor.cursor_position_in_buffer.col > 0 {
                 while editor.cursor_position_in_buffer.col > 0 {
-                    let c = editor.current_char().unwrap();
+                    let c = editor.get_current_char().unwrap();
                     if !c.is_whitespace() {
                         break;
                     }
                     backward_char.execute(editor)?;
                 }
                 while editor.cursor_position_in_buffer.col > 0 {
-                    let c = editor.current_char().unwrap();
+                    let c = editor.get_current_char().unwrap();
                     if c.is_whitespace() {
                         break 'outer;
                     }
@@ -229,7 +229,7 @@ impl Command for BackwardWord {
                 let mut move_end_of_line = MoveEndOfLine {};
                 move_end_of_line.execute(editor)?;
                 while editor.cursor_position_in_buffer.col > 0 {
-                    let c = editor.current_char().unwrap();
+                    let c = editor.get_current_char().unwrap();
                     if c.is_whitespace() {
                         break 'outer;
                     }

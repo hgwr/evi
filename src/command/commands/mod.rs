@@ -6,3 +6,4 @@ pub mod insert;
 pub mod esc;
 pub mod delete;
 pub mod undo;
+pub mod append;

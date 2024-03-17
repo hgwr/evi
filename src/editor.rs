@@ -1,5 +1,5 @@
-use std::{error::Error, io::Write};
 use std::path::PathBuf;
+use std::io::Write;
 
 use crossterm::{
     terminal::{self, ClearType},
@@ -123,55 +123,59 @@ impl Editor {
         }
     }
 
+    fn convert_repetitive_command_history_to_commands_history(&mut self) {
+        if let Some(mut last_command_chunk) = self.command_history.pop() {
+            let mut last_executed_command = last_command_chunk.pop().unwrap();
+            last_executed_command
+                .command
+                .set_text(self.last_input_string.clone());
+
+            let count = last_executed_command.command_data.count;
+            if count == 1 {
+                self.command_history.push(vec![last_executed_command]);
+            } else if count >= 2 {
+                last_executed_command.command_data.count = 1;
+                let command_data: CommandData = last_executed_command.command_data.clone();
+                let mut command_opt: Option<Box<dyn Command>> = Some(last_executed_command.command);
+                let mut command_series: Vec<ExecutedCommand> = Vec::new();
+                for _ in 1..count {
+                    if let Some(mut command) = command_opt {
+                        let redo_result = command.redo(self);
+                        command_series.push(ExecutedCommand {
+                            command_data: command_data.clone(),
+                            command,
+                        });
+                        info!("command_series.len(): {}", command_series.len());
+                        if let Ok(Some(next_command)) = redo_result {
+                            command_opt = Some(next_command);
+                        } else {
+                            command_opt = None;
+                            break;
+                        }
+                    }
+                }
+                if let Some(command) = command_opt {
+                    command_series.push(ExecutedCommand {
+                        command_data: command_data.clone(),
+                        command,
+                    });
+                    info!("command_series.len(): {}", command_series.len());
+                }
+                info!("### command_series.len(): {}", command_series.len());
+                self.command_history.push(command_series);
+            } else {
+                panic!("count: {}", count);
+            }
+            info!("input string: {}", self.last_input_string);
+        }
+    }
+
     pub fn set_command_mode(&mut self) {
         match self.mode {
             Mode::Command => {}
             Mode::Insert => {
                 self.mode = Mode::Command;
-                if let Some(mut last_command_chunk) = self.command_history.pop() {
-                    let mut last_executed_command = last_command_chunk.pop().unwrap();
-                    last_executed_command
-                        .command
-                        .set_text(self.last_input_string.clone());
-
-                    let count = last_executed_command.command_data.count;
-                    if count == 1 {
-                        self.command_history.push(vec![last_executed_command]);
-                    } else if count >= 2 {
-                        last_executed_command.command_data.count = 1;
-                        let command_data: CommandData = last_executed_command.command_data.clone();
-                        let mut command_opt: Option<Box<dyn Command>> = Some(last_executed_command.command);
-                        let mut command_series: Vec<ExecutedCommand> = Vec::new();
-                        for _ in 1..count {
-                            if let Some(mut command) = command_opt {
-                                let redo_result: Result<Option<Box<dyn Command>>, Box<dyn Error + Send + Sync>> = command.redo(self);
-                                command_series.push(ExecutedCommand {
-                                    command_data: command_data.clone(),
-                                    command,
-                                });
-                                info!("command_series.len(): {}", command_series.len());
-                                if let Ok(Some(next_command)) = redo_result {
-                                    command_opt = Some(next_command);
-                                } else {
-                                    command_opt = None;
-                                    break;
-                                }
-                            }
-                        }
-                        if let Some(command) = command_opt {
-                            command_series.push(ExecutedCommand {
-                                command_data: command_data.clone(),
-                                command,
-                            });
-                            info!("command_series.len(): {}", command_series.len());
-                        }
-                        info!("### command_series.len(): {}", command_series.len());
-                        self.command_history.push(command_series);
-                    } else {
-                        panic!("count: {}", count);
-                    }
-                    info!("input string: {}", self.last_input_string);
-                }
+                self.convert_repetitive_command_history_to_commands_history();
                 self.status_line = "".to_string();
             }
         }

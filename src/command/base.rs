@@ -4,6 +4,9 @@ use crate::{editor::Editor, generic_error::GenericResult};
 
 pub trait Command {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()>;
+    fn is_reusable(&self) -> bool {
+        true
+    }
     fn is_modeful(&self) -> bool {
         false
     }

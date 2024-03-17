@@ -228,18 +228,43 @@ impl Editor {
 
     pub fn execute_command(&mut self, command_data: CommandData) -> GenericResult<()> {
         let mut command = command_factory(&command_data);
-        if !command.is_modeful() {
+        if !command.is_modeful() && command.is_reusable() {
             for _ in 0..command_data.count {
                 command.execute(self)?;
             }
+            if command.is_undoable() {
+                self.command_history.push(vec![ExecutedCommand {
+                    command_data,
+                    command,
+                }]);
+            }
+        } else if !command.is_modeful() && !command.is_reusable() {
+            let mut command_chunk: Vec<ExecutedCommand> = Vec::new();
+            let disassemble_command_data = CommandData {
+                count: 1,
+                ..command_data
+            };
+            for _ in 0..command_data.count {
+                let mut command = command_factory(&disassemble_command_data);
+                command.execute(self)?;
+                if command.is_undoable() {
+                    command_chunk.push(ExecutedCommand {
+                        command_data: disassemble_command_data.clone(),
+                        command,
+                    });
+                }
+            }
+            if command_chunk.len() > 0 {
+                self.command_history.push(command_chunk);
+            }
         } else {
             command.execute(self)?;
-        }
-        if command.is_undoable() {
-            self.command_history.push(vec![ExecutedCommand {
-                command_data,
-                command,
-            }]);
+            if command.is_undoable() {
+                self.command_history.push(vec![ExecutedCommand {
+                    command_data,
+                    command,
+                }]);
+            }
         }
         Ok(())
     }
@@ -247,7 +272,9 @@ impl Editor {
     pub fn undo(&mut self) -> GenericResult<()> {
         if let Some(mut last_command_chunk) = self.command_history.pop() {
             while let Some(mut executed_command) = last_command_chunk.pop() {
-                executed_command.command.undo(self)?;
+                for _ in 0..executed_command.command_data.count {
+                    executed_command.command.undo(self)?;
+                }
             }
             Ok(())
         } else {

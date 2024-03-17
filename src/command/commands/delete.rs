@@ -18,6 +18,10 @@ impl Default for DeleteChar {
 }
 
 impl Command for DeleteChar {
+    fn is_reusable(&self) -> bool {
+        false
+    }
+
     fn is_undoable(&self) -> bool {
         true
     }
@@ -73,5 +77,12 @@ impl Command for DeleteChar {
         editor.restore_cursor_data(editor_cursor_data);
 
         Ok(())
+    }
+
+    fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
+        editor.is_dirty = true;
+        let mut new_delete = Box::new(DeleteChar::default());
+        new_delete.execute(editor)?;
+        Ok(Some(new_delete))
     }
 }

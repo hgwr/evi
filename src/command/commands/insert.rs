@@ -21,6 +21,10 @@ impl Default for Insert {
 }
 
 impl Command for Insert {
+    fn is_reusable(&self) -> bool {
+        false
+    }
+
     fn is_modeful(&self) -> bool {
         true
     }

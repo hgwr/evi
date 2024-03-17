@@ -21,6 +21,10 @@ impl Default for Append {
 }
 
 impl Command for Append {
+    fn is_reusable(&self) -> bool {
+        false
+    }
+
     fn is_modeful(&self) -> bool {
         true
     }

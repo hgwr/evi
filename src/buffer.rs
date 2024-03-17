@@ -92,31 +92,45 @@ impl Buffer {
         &mut self,
         mut start: CursorPositionInBuffer,
         mut end: CursorPositionInBuffer,
-    ) -> GenericResult<()> {
+    ) -> GenericResult<String> {
         if start.cmp(&end) == std::cmp::Ordering::Greater {
             let tmp = start;
             start = end;
             end = tmp;
         }
         if start.row == end.row {
-            let line = &self.lines[start.row];
+            let line = &mut self.lines[start.row];
+            let deleted: String = line
+                .chars()
+                .skip(start.col)
+                .take(end.col - start.col)
+                .collect();
             let new_line: String = line
                 .chars()
                 .take(start.col)
                 .chain(line.chars().skip(end.col))
                 .collect();
-            self.lines[start.row] = new_line;
+            *line = new_line;
+            Ok(deleted)
         } else {
             let first_line = self.lines[start.row].clone();
             let last_line = self.lines[end.row].clone();
             let new_first_line: String = first_line.chars().take(start.col).collect();
+            let first_line_deleted: String = first_line.chars().skip(start.col).collect();
             let new_last_line: String = last_line.chars().skip(end.col).collect();
+            let last_line_deleted: String = last_line.chars().take(end.col).collect();
             self.lines[start.row] = new_first_line + new_last_line.as_str();
-            for _ in 0..end.row - start.row {
+            let mut deleted_chars = first_line_deleted;
+            for i in 0..end.row - start.row {
+                deleted_chars.push('\n');
+                if i < end.row - start.row - 1 {
+                    deleted_chars.push_str(&self.lines[start.row + 1]);
+                }
                 self.lines.remove(start.row + 1);
             }
+            deleted_chars.push_str(&last_line_deleted);
+            Ok(deleted_chars)
         }
-        Ok(())
     }
 }
 
@@ -178,13 +192,27 @@ mod tests {
     #[test]
     fn test_buffer_delete() {
         let mut buffer = Buffer {
+            lines: vec!["abcdef".to_string()],
+        };
+        let deleted = buffer
+            .delete(
+                CursorPositionInBuffer { row: 0, col: 1 },
+                CursorPositionInBuffer { row: 0, col: 4 },
+            )
+            .unwrap();
+        assert_eq!(buffer.lines, vec!["aef".to_string()]);
+        assert_eq!(deleted, "bcd");
+
+        buffer = Buffer {
             lines: vec!["abc".to_string(), "def".to_string(), "ghi".to_string()],
         };
-        buffer.delete(
-            CursorPositionInBuffer { row: 0, col: 1 },
-            CursorPositionInBuffer { row: 1, col: 1 },
-        )
-        .unwrap();
+        let deleted = buffer
+            .delete(
+                CursorPositionInBuffer { row: 0, col: 1 },
+                CursorPositionInBuffer { row: 1, col: 1 },
+            )
+            .unwrap();
         assert_eq!(buffer.lines, vec!["aef".to_string(), "ghi".to_string()]);
+        assert_eq!(deleted, "bc\nd");
     }
 }

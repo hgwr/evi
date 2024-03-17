@@ -123,11 +123,20 @@ impl Command for Delete {
                 jump_command.execute(editor)?;
             }
             let end_cursor_data = editor.snapshot_cursor_data();
-            editor.buffer.delete(start_cursor_data.cursor_position_in_buffer, end_cursor_data.cursor_position_in_buffer)?;
-            if start_cursor_data.cursor_position_in_buffer.cmp(&end_cursor_data.cursor_position_in_buffer) == std::cmp::Ordering::Greater {
-                editor.restore_cursor_data(end_cursor_data);
-            } else {
-                editor.restore_cursor_data(start_cursor_data);
+            if let Ok(deleted) = editor.buffer.delete(
+                start_cursor_data.cursor_position_in_buffer,
+                end_cursor_data.cursor_position_in_buffer,
+            ) {
+                self.text = Some(deleted);
+                if start_cursor_data
+                    .cursor_position_in_buffer
+                    .cmp(&end_cursor_data.cursor_position_in_buffer)
+                    == std::cmp::Ordering::Greater
+                {
+                    editor.restore_cursor_data(end_cursor_data);
+                } else {
+                    editor.restore_cursor_data(start_cursor_data);
+                }
             }
         }
 

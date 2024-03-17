@@ -96,4 +96,25 @@ impl Command for Append {
         }
         Ok(())
     }
+
+    fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
+        editor.is_dirty = true;
+        let new_insert = Box::new(Append {
+            editor_cursor_data: self.editor_cursor_data,
+            text: self.text.clone(),
+        });
+
+        if let Some(input_text) = &self.text {
+            for c in input_text.chars() {
+                if c == '\n' {
+                    editor.append_new_line()?
+                } else {
+                    editor.insert_char(c)?;
+                }
+            }
+        }
+
+        Ok(Some(new_insert))
+    }
+
 }

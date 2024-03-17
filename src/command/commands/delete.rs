@@ -1,4 +1,5 @@
 use crate::command::base::Command;
+use crate::command::factory::command_factory;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
@@ -84,5 +85,52 @@ impl Command for DeleteChar {
         let mut new_delete = Box::new(DeleteChar::default());
         new_delete.execute(editor)?;
         Ok(Some(new_delete))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Delete {
+    pub editor_cursor_data: Option<crate::editor::EditorCursorData>,
+    pub text: Option<String>,
+    pub jump_command_data_opt: Option<crate::command::base::JumpCommandData>,
+}
+
+impl Default for Delete {
+    fn default() -> Self {
+        Self {
+            editor_cursor_data: None,
+            text: None,
+            jump_command_data_opt: None,
+        }
+    }
+}
+
+impl Command for Delete {
+    fn is_reusable(&self) -> bool {
+        false
+    }
+
+    fn is_undoable(&self) -> bool {
+        true
+    }
+
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        let start_cursor_data = editor.snapshot_cursor_data();
+        if let Some(jump_command_data) = self.jump_command_data_opt {
+            let command_data: crate::command::base::CommandData = jump_command_data.into();
+            for _ in 0..command_data.count {
+                let mut jump_command = command_factory(&command_data);
+                jump_command.execute(editor)?;
+            }
+            let end_cursor_data = editor.snapshot_cursor_data();
+            editor.buffer.delete(start_cursor_data.cursor_position_in_buffer, end_cursor_data.cursor_position_in_buffer)?;
+            if start_cursor_data.cursor_position_in_buffer.cmp(&end_cursor_data.cursor_position_in_buffer) == std::cmp::Ordering::Greater {
+                editor.restore_cursor_data(end_cursor_data);
+            } else {
+                editor.restore_cursor_data(start_cursor_data);
+            }
+        }
+
+        Ok(())
     }
 }

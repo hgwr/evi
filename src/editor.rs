@@ -8,7 +8,7 @@ use crossterm::{
 
 use log::info;
 
-use crate::command::base::{Command, CommandData};
+use crate::{buffer::CursorPositionInBuffer, command::base::{Command, CommandData}};
 use crate::command::factory::command_factory;
 use crate::render::render;
 use crate::{buffer::Buffer, command::base::ExecutedCommand, generic_error::GenericResult};
@@ -23,12 +23,6 @@ pub struct TerminalSize {
 pub struct CursorPositionOnScreen {
     pub row: u16,
     pub col: u16,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CursorPositionInBuffer {
-    pub row: usize,
-    pub col: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

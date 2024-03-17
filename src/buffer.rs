@@ -4,6 +4,30 @@ use tempfile::NamedTempFile;
 
 use crate::generic_error::GenericResult;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct CursorPositionInBuffer {
+    pub row: usize,
+    pub col: usize,
+}
+
+impl CursorPositionInBuffer {
+    pub fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.row < other.row {
+            std::cmp::Ordering::Less
+        } else if self.row > other.row {
+            std::cmp::Ordering::Greater
+        } else {
+            self.col.cmp(&other.col)
+        }
+    }
+}
+
+impl PartialOrd for CursorPositionInBuffer {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 pub struct Buffer {
     pub lines: Vec<String>,
 }
@@ -64,4 +88,103 @@ impl Buffer {
         self.lines.get(row)?.chars().nth(col)
     }
 
+    pub fn delete(
+        &mut self,
+        mut start: CursorPositionInBuffer,
+        mut end: CursorPositionInBuffer,
+    ) -> GenericResult<()> {
+        if start.cmp(&end) == std::cmp::Ordering::Greater {
+            let tmp = start;
+            start = end;
+            end = tmp;
+        }
+        if start.row == end.row {
+            let line = &self.lines[start.row];
+            let new_line: String = line
+                .chars()
+                .take(start.col)
+                .chain(line.chars().skip(end.col))
+                .collect();
+            self.lines[start.row] = new_line;
+        } else {
+            let first_line = self.lines[start.row].clone();
+            let last_line = self.lines[end.row].clone();
+            let new_first_line: String = first_line.chars().take(start.col).collect();
+            let new_last_line: String = last_line.chars().skip(end.col).collect();
+            self.lines[start.row] = new_first_line + new_last_line.as_str();
+            for _ in 0..end.row - start.row {
+                self.lines.remove(start.row + 1);
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cursor_position_in_buffer_cmp() {
+        let a = CursorPositionInBuffer { row: 0, col: 0 };
+        let b = CursorPositionInBuffer { row: 0, col: 1 };
+        let c = CursorPositionInBuffer { row: 1, col: 0 };
+        let d = CursorPositionInBuffer { row: 1, col: 1 };
+        assert_eq!(a.cmp(&a), std::cmp::Ordering::Equal);
+        assert_eq!(a.cmp(&b), std::cmp::Ordering::Less);
+        assert_eq!(a.cmp(&c), std::cmp::Ordering::Less);
+        assert_eq!(a.cmp(&d), std::cmp::Ordering::Less);
+        assert_eq!(b.cmp(&a), std::cmp::Ordering::Greater);
+        assert_eq!(b.cmp(&b), std::cmp::Ordering::Equal);
+        assert_eq!(b.cmp(&c), std::cmp::Ordering::Less);
+        assert_eq!(b.cmp(&d), std::cmp::Ordering::Less);
+        assert_eq!(c.cmp(&a), std::cmp::Ordering::Greater);
+        assert_eq!(c.cmp(&b), std::cmp::Ordering::Greater);
+        assert_eq!(c.cmp(&c), std::cmp::Ordering::Equal);
+        assert_eq!(c.cmp(&d), std::cmp::Ordering::Less);
+        assert_eq!(d.cmp(&a), std::cmp::Ordering::Greater);
+        assert_eq!(d.cmp(&b), std::cmp::Ordering::Greater);
+        assert_eq!(d.cmp(&c), std::cmp::Ordering::Greater);
+        assert_eq!(d.cmp(&d), std::cmp::Ordering::Equal);
+    }
+
+    #[test]
+    fn test_buffer_insert_char() {
+        let mut buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string()],
+        };
+        buffer.insert_char(0, 1, 'x').unwrap();
+        assert_eq!(buffer.lines, vec!["axbc".to_string(), "def".to_string()]);
+    }
+
+    #[test]
+    fn test_buffer_delete_char() {
+        let mut buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string()],
+        };
+        buffer.delete_char(0, 1).unwrap();
+        assert_eq!(buffer.lines, vec!["ac".to_string(), "def".to_string()]);
+    }
+
+    #[test]
+    fn test_buffer_get_char() {
+        let buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string()],
+        };
+        assert_eq!(buffer.get_char(0, 1), Some('b'));
+        assert_eq!(buffer.get_char(0, 3), None);
+    }
+
+    #[test]
+    fn test_buffer_delete() {
+        let mut buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string(), "ghi".to_string()],
+        };
+        buffer.delete(
+            CursorPositionInBuffer { row: 0, col: 1 },
+            CursorPositionInBuffer { row: 1, col: 1 },
+        )
+        .unwrap();
+        assert_eq!(buffer.lines, vec!["aef".to_string(), "ghi".to_string()]);
+    }
 }

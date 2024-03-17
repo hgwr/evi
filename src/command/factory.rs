@@ -5,7 +5,7 @@ use crate::command::commands::no_op_command::NoOpCommand;
 use crossterm::event::KeyCode;
 
 use super::commands::append::Append;
-use super::commands::delete::DeleteChar;
+use super::commands::delete::{Delete, DeleteChar};
 use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
 use super::commands::undo::Undo;
@@ -80,6 +80,15 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('x'),
             ..
         } => Box::new(DeleteChar::default()),
+
+        CommandData {
+            key_code: KeyCode::Char('d'),
+            range,
+            ..
+        } => Box::new(Delete {
+            jump_command_data_opt: range.clone(),
+            ..Default::default()
+        }),
 
         // undo command
         CommandData {

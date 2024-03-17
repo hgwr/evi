@@ -47,3 +47,14 @@ pub struct ExecutedCommand {
     pub command_data: CommandData,
     pub command: Box<dyn Command>,
 }
+
+impl Into<CommandData> for JumpCommandData {
+    fn into(self) -> CommandData {
+        CommandData {
+            count: self.count,
+            key_code: self.key_code,
+            modifiers: self.modifiers,
+            range: None,
+        }
+    }
+}

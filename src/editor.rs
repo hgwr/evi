@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::io::Write;
+use std::path::PathBuf;
 
 use crossterm::{
     terminal::{self, ClearType},
@@ -123,6 +123,17 @@ impl Editor {
         }
     }
 
+    pub fn set_command_mode(&mut self) {
+        match self.mode {
+            Mode::Command => {}
+            Mode::Insert => {
+                self.mode = Mode::Command;
+                self.convert_repetitive_command_history_to_commands_history();
+                self.status_line = "".to_string();
+            }
+        }
+    }
+
     fn convert_repetitive_command_history_to_commands_history(&mut self) {
         if let Some(mut last_command_chunk) = self.command_history.pop() {
             let mut last_executed_command = last_command_chunk.pop().unwrap();
@@ -136,33 +147,11 @@ impl Editor {
             } else if count >= 2 {
                 last_executed_command.command_data.count = 1;
                 let command_data: CommandData = last_executed_command.command_data.clone();
-                let mut command_opt: Option<Box<dyn Command>> = Some(last_executed_command.command);
-                let mut command_series: Vec<ExecutedCommand> = Vec::new();
-                for _ in 1..count {
-                    if let Some(mut command) = command_opt {
-                        let redo_result = command.redo(self);
-                        command_series.push(ExecutedCommand {
-                            command_data: command_data.clone(),
-                            command,
-                        });
-                        info!("command_series.len(): {}", command_series.len());
-                        if let Ok(Some(next_command)) = redo_result {
-                            command_opt = Some(next_command);
-                        } else {
-                            command_opt = None;
-                            break;
-                        }
-                    }
-                }
-                if let Some(command) = command_opt {
-                    command_series.push(ExecutedCommand {
-                        command_data: command_data.clone(),
-                        command,
-                    });
-                    info!("command_series.len(): {}", command_series.len());
-                }
-                info!("### command_series.len(): {}", command_series.len());
-                self.command_history.push(command_series);
+                self.do_repetitive_command(
+                    count,
+                    command_data,
+                    Some(last_executed_command.command),
+                );
             } else {
                 panic!("count: {}", count);
             }
@@ -170,15 +159,38 @@ impl Editor {
         }
     }
 
-    pub fn set_command_mode(&mut self) {
-        match self.mode {
-            Mode::Command => {}
-            Mode::Insert => {
-                self.mode = Mode::Command;
-                self.convert_repetitive_command_history_to_commands_history();
-                self.status_line = "".to_string();
+    fn do_repetitive_command(
+        &mut self,
+        count: usize,
+        command_data: CommandData,
+        mut command_opt: Option<Box<dyn Command>>,
+    ) {
+        let mut command_series: Vec<ExecutedCommand> = Vec::new();
+        for _ in 1..count {
+            if let Some(mut command) = command_opt {
+                let redo_result = command.redo(self);
+                command_series.push(ExecutedCommand {
+                    command_data: command_data.clone(),
+                    command,
+                });
+                info!("command_series.len(): {}", command_series.len());
+                if let Ok(Some(next_command)) = redo_result {
+                    command_opt = Some(next_command);
+                } else {
+                    command_opt = None;
+                    break;
+                }
             }
         }
+        if let Some(command) = command_opt {
+            command_series.push(ExecutedCommand {
+                command_data: command_data.clone(),
+                command,
+            });
+            info!("command_series.len(): {}", command_series.len());
+        }
+        info!("### command_series.len(): {}", command_series.len());
+        self.command_history.push(command_series);
     }
 
     pub fn set_insert_mode(&mut self) {

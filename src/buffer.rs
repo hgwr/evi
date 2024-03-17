@@ -2,7 +2,7 @@ use std::{fs, io::Write, path::PathBuf};
 
 use tempfile::NamedTempFile;
 
-use crate::generic_error::GenericResult;
+use crate::{generic_error::GenericResult, util::split_line};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CursorPositionInBuffer {
@@ -71,6 +71,32 @@ impl Buffer {
             .chain(self.lines[row].chars().skip(col))
             .collect();
         self.lines[row] = new_line;
+        Ok(())
+    }
+
+    pub fn insert(&mut self, row: usize, col: usize, s: &str) -> GenericResult<()> {
+        let lines = split_line(s);
+        if lines.len() == 0 {
+            panic!("lines.len() == 0, s: '{:?}'", s);
+        }
+        if lines.len() == 1 {
+            let new_line = self.lines[row]
+                .chars()
+                .take(col)
+                .chain(lines[0].chars())
+                .chain(self.lines[row].chars().skip(col))
+                .collect();
+            self.lines[row] = new_line;
+        } else if lines.len() >= 2 {
+            let last_line = lines[lines.len() - 1];
+            let first_line = self.lines[row].clone();
+            let new_first_line: String = first_line.chars().take(col).collect();
+            let new_last_line: String = last_line.chars().collect();
+            self.lines[row] = new_first_line + new_last_line.as_str();
+            for i in 0..lines.len() - 1 {
+                self.lines.insert(row + 1 + i, lines[i].to_string());
+            }
+        }
         Ok(())
     }
 

@@ -2,6 +2,7 @@ use crate::command::base::Command;
 use crate::command::factory::command_factory;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
+use crate::util::split_line;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DeleteChar {
@@ -134,12 +135,38 @@ impl Command for Delete {
                     == std::cmp::Ordering::Greater
                 {
                     editor.restore_cursor_data(end_cursor_data);
+                    self.editor_cursor_data = Some(end_cursor_data);
                 } else {
                     editor.restore_cursor_data(start_cursor_data);
+                    self.editor_cursor_data = Some(start_cursor_data);
                 }
             }
         }
 
+        Ok(())
+    }
+
+    fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        if let Some(text) = &self.text {
+            if let Some(cursor_data) = &self.editor_cursor_data {
+                let lines = split_line(text);
+                let mut row = cursor_data.cursor_position_in_buffer.row;
+                let mut col = cursor_data.cursor_position_in_buffer.col;
+                for line in lines {
+                    let line_length = line.chars().count();
+                    if line_length > 0 {
+                        let mut new_line = editor.buffer.lines[row].clone();
+                        new_line.insert_str(col, line);
+                        editor.buffer.lines[row] = new_line;
+                        col += line_length;
+                    } else {
+                        editor.buffer.lines.insert(row, line.to_string());
+                    }
+                    row += 1;
+                }
+                editor.restore_cursor_data(*cursor_data);
+            }
+        }
         Ok(())
     }
 }

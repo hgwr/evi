@@ -2,7 +2,6 @@ use crate::command::base::Command;
 use crate::command::factory::command_factory;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
-use crate::util::split_line;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DeleteChar {
@@ -149,21 +148,9 @@ impl Command for Delete {
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if let Some(text) = &self.text {
             if let Some(cursor_data) = &self.editor_cursor_data {
-                let lines = split_line(text);
-                let mut row = cursor_data.cursor_position_in_buffer.row;
-                let mut col = cursor_data.cursor_position_in_buffer.col;
-                for line in lines {
-                    let line_length = line.chars().count();
-                    if line_length > 0 {
-                        let mut new_line = editor.buffer.lines[row].clone();
-                        new_line.insert_str(col, line);
-                        editor.buffer.lines[row] = new_line;
-                        col += line_length;
-                    } else {
-                        editor.buffer.lines.insert(row, line.to_string());
-                    }
-                    row += 1;
-                }
+                let row = cursor_data.cursor_position_in_buffer.row;
+                let col = cursor_data.cursor_position_in_buffer.col;
+                editor.buffer.insert(row, col, text)?;
                 editor.restore_cursor_data(*cursor_data);
             }
         }

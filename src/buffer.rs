@@ -75,27 +75,27 @@ impl Buffer {
     }
 
     pub fn insert(&mut self, row: usize, col: usize, s: &str) -> GenericResult<()> {
-        let lines = split_line(s);
-        if lines.len() == 0 {
+        let lines_to_be_inserted = split_line(s);
+        if lines_to_be_inserted.len() == 0 {
             panic!("lines.len() == 0, s: '{:?}'", s);
         }
-        if lines.len() == 1 {
+        if lines_to_be_inserted.len() == 1 {
             let new_line = self.lines[row]
                 .chars()
                 .take(col)
-                .chain(lines[0].chars())
+                .chain(lines_to_be_inserted[0].chars())
                 .chain(self.lines[row].chars().skip(col))
                 .collect();
             self.lines[row] = new_line;
-        } else if lines.len() >= 2 {
-            let last_line = lines[lines.len() - 1];
-            let first_line = self.lines[row].clone();
-            let new_first_line: String = first_line.chars().take(col).collect();
-            let new_last_line: String = last_line.chars().collect();
-            self.lines[row] = new_first_line + new_last_line.as_str();
-            for i in 0..lines.len() - 1 {
-                self.lines.insert(row + 1 + i, lines[i].to_string());
+        } else if lines_to_be_inserted.len() >= 2 {
+            let new_first_line: String = self.lines[row].chars().take(col).collect();
+            let input_last_line: String = lines_to_be_inserted[lines_to_be_inserted.len() - 1].to_string();
+            let new_last_line: String = input_last_line + &self.lines[row].chars().skip(col).collect::<String>();
+            self.lines[row] = new_first_line + lines_to_be_inserted[0];
+            for i in 1..lines_to_be_inserted.len() - 1 {
+                self.lines.insert(row + i, lines_to_be_inserted[i].to_string());
             }
+            self.lines.insert(row + lines_to_be_inserted.len() - 1, new_last_line);
         }
         Ok(())
     }
@@ -240,5 +240,20 @@ mod tests {
             .unwrap();
         assert_eq!(buffer.lines, vec!["aef".to_string(), "ghi".to_string()]);
         assert_eq!(deleted, "bc\nd");
+    }
+
+    #[test]
+    fn test_insert() {
+        let mut buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string()],
+        };
+        buffer.insert(0, 1, "x").unwrap();
+        assert_eq!(buffer.lines, vec!["axbc".to_string(), "def".to_string()]);
+
+        buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string()],
+        };
+        buffer.insert(0, 1, "x\ny").unwrap();
+        assert_eq!(buffer.lines, vec!["ax".to_string(), "ybc".to_string(), "def".to_string()]);
     }
 }

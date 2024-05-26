@@ -33,6 +33,12 @@ pub struct EditorCursorData {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Region {
+    pub start: EditorCursorData,
+    pub end: EditorCursorData,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Mode {
     Command,
     Insert,

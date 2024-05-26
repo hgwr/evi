@@ -8,7 +8,9 @@ use crate::editor::Editor;
 use crate::editor::Region;
 use crate::generic_error::GenericResult;
 use crate::command::commands::move_cursor::MoveBeginningOfLine;
+use super::commands::move_cursor::MoveEndOfLine;
 use super::commands::move_cursor::NextLine;
+use super::key_codes::is_editing_command_with_range;
 
 fn is_line_oriented_command(jump_command_data: JumpCommandData) -> bool {
     let key_code = jump_command_data.key_code;
@@ -41,6 +43,8 @@ pub fn get_region(editor: &mut Editor, jump_command_data: JumpCommandData) -> Ge
         get_region_from_line_oriented_command(editor, jump_command_data)
     } else if is_end_of_line_command(jump_command_data) {
         get_region_from_end_of_line_command(editor)
+    } else if is_editing_command_with_range(&jump_command_data.key_code) {
+        get_region_on_this_line(editor)
     } else {
         get_region_from_command(editor, jump_command_data)
     }
@@ -69,6 +73,20 @@ fn get_region_from_line_oriented_command(editor: &mut Editor, jump_command_data:
 }
 
 fn get_region_from_end_of_line_command(editor: &mut Editor) -> GenericResult<Region> {
+    let start_cursor_data = editor.snapshot_cursor_data();
+    let mut move_end_of_line = MoveEndOfLine;
+    move_end_of_line.execute(editor)?;
+    let mut end_cursor_data = editor.snapshot_cursor_data();
+    end_cursor_data.cursor_position_in_buffer.col = editor.buffer.lines[end_cursor_data.cursor_position_in_buffer.row].len();
+    Ok(Region {
+        start: start_cursor_data,
+        end: end_cursor_data,
+    })
+}
+
+fn get_region_on_this_line(editor: &mut Editor) -> GenericResult<Region> {
+    let mut move_beginning_of_line = MoveBeginningOfLine;
+    move_beginning_of_line.execute(editor)?;
     let start_cursor_data = editor.snapshot_cursor_data();
     let mut next_line = NextLine;
     next_line.execute(editor)?;

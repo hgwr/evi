@@ -118,12 +118,12 @@ impl Command for Delete {
         if let Some(jump_command_data) = self.jump_command_data_opt {
             // TODO jump_command_data が行指向の場合は行全体を範囲指定に使うように修正する
             // TODO jump_command_data が行末の場合は範囲指定で行末まで削除するように修正する
+            let start_cursor_data = editor.snapshot_cursor_data();
             let command_data: crate::command::base::CommandData = jump_command_data.into();
             for _ in 0..command_data.count {
                 let mut jump_command = command_factory(&command_data);
                 jump_command.execute(editor)?;
             }
-            let start_cursor_data = editor.snapshot_cursor_data();
             let end_cursor_data = editor.snapshot_cursor_data();
             if let Ok(deleted) = editor.buffer.delete(
                 start_cursor_data.cursor_position_in_buffer,

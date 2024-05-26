@@ -1,5 +1,4 @@
 use crate::command::base::Command;
-use crate::command::factory::command_factory;
 use crate::command::region::get_region;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
@@ -118,23 +117,25 @@ impl Command for Delete {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if let Some(jump_command_data) = self.jump_command_data_opt {
             let region = get_region(editor, jump_command_data);
-            let start_cursor_data = region.start;
-            let end_cursor_data = region.end;
-            if let Ok(deleted) = editor.buffer.delete(
-                start_cursor_data.cursor_position_in_buffer,
-                end_cursor_data.cursor_position_in_buffer,
-            ) {
-                self.text = Some(deleted);
-                if start_cursor_data
-                    .cursor_position_in_buffer
-                    .cmp(&end_cursor_data.cursor_position_in_buffer)
-                    == std::cmp::Ordering::Greater
-                {
-                    editor.restore_cursor_data(end_cursor_data);
-                    self.editor_cursor_data = Some(end_cursor_data);
-                } else {
-                    editor.restore_cursor_data(start_cursor_data);
-                    self.editor_cursor_data = Some(start_cursor_data);
+            if let Ok(region) = region {
+                let start_cursor_data = region.start;
+                let end_cursor_data = region.end;
+                if let Ok(deleted) = editor.buffer.delete(
+                    start_cursor_data.cursor_position_in_buffer,
+                    end_cursor_data.cursor_position_in_buffer,
+                ) {
+                    self.text = Some(deleted);
+                    if start_cursor_data
+                        .cursor_position_in_buffer
+                        .cmp(&end_cursor_data.cursor_position_in_buffer)
+                        == std::cmp::Ordering::Greater
+                    {
+                        editor.restore_cursor_data(end_cursor_data);
+                        self.editor_cursor_data = Some(end_cursor_data);
+                    } else {
+                        editor.restore_cursor_data(start_cursor_data);
+                        self.editor_cursor_data = Some(start_cursor_data);
+                    }
                 }
             }
         }

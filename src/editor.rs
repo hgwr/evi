@@ -42,6 +42,7 @@ pub struct Region {
 pub enum Mode {
     Command,
     Insert,
+    ExCommand,
 }
 
 pub struct Editor {
@@ -58,6 +59,7 @@ pub struct Editor {
     pub status_line: String,
     pub command_history: Vec<Vec<ExecutedCommand>>,
     pub last_input_string: String,
+    pub ex_command_data: String,
 }
 
 impl Editor {
@@ -79,6 +81,7 @@ impl Editor {
             status_line: "".to_string(),
             command_history: Vec::new(),
             last_input_string: "".to_string(),
+            ex_command_data: "".to_string(),
         }
     }
 
@@ -126,6 +129,10 @@ impl Editor {
     pub fn set_command_mode(&mut self) {
         match self.mode {
             Mode::Command => {}
+            Mode::ExCommand => {
+                self.mode = Mode::Command;
+                self.status_line = "".to_string();
+            }
             Mode::Insert => {
                 self.mode = Mode::Command;
                 self.convert_repetitive_command_history_to_commands_history();
@@ -195,6 +202,10 @@ impl Editor {
 
     pub fn set_insert_mode(&mut self) {
         match self.mode {
+            Mode::ExCommand => {
+                self.mode = Mode::Insert;
+                self.status_line = "".to_string();
+            }
             Mode::Command => {
                 self.mode = Mode::Insert;
                 self.status_line = "-- INSERT --".to_string();
@@ -210,6 +221,46 @@ impl Editor {
 
     pub fn is_insert_mode(&self) -> bool {
         self.mode == Mode::Insert
+    }
+
+    pub fn is_ex_command_mode(&self) -> bool {
+        self.mode == Mode::ExCommand
+    }
+
+    pub fn set_ex_command_mode(&mut self) {
+        self.mode = Mode::ExCommand;
+        self.status_line = ":".to_string();
+    }
+
+    pub fn get_ex_command_data(&self) -> String {
+        self.ex_command_data.clone()
+    }
+
+    pub fn execute_ex_command(&mut self, command_data: String) -> GenericResult<()> {
+        let command_data = command_data.trim();
+        if command_data == "q" {
+            self.should_exit = true;
+        } else if command_data == "w" {
+            self.save_file()?;
+        } else if command_data == "wq" {
+            self.save_file()?;
+            self.should_exit = true;
+        } else {
+            self.status_line = "Unknown command".to_string();
+        }
+        self.ex_command_data = "".to_string();
+        Ok(())
+    }
+
+    pub fn append_ex_command(&mut self, key_data: crate::command::compose::KeyData) {
+        if let crate::command::compose::KeyData {
+            key_code: crossterm::event::KeyCode::Char(c),
+            ..
+        } = key_data
+        {
+            self.ex_command_data.push(c);
+            self.status_line = ":".to_owned() + &self.ex_command_data.clone();
+        }
     }
 
     pub fn snapshot_cursor_data(&self) -> EditorCursorData {

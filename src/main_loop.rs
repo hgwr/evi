@@ -28,21 +28,49 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
             Ok(Event::Key(key_event)) => {
                 if editor.is_command_mode() {
                     info!("Key event: {:?}", key_event);
-                    event_keys.push(key_event);
-                    let input_state = compose(&event_keys);
-                    match input_state {
-                        InputState::CommandCompleted(command_data) => {
-                            info!("Command completed: {:?}", command_data);
-                            editor.execute_command(command_data)?;
-                            event_keys.clear();
+                    if event_keys.len() == 0 && key_event.code == event::KeyCode::Char(':') {
+                        // ex command begin
+                        editor.set_ex_command_mode();
+                        editor.status_line = ":".to_string();
+                    } else {
+                        event_keys.push(key_event);
+                        let input_state = compose(&event_keys);
+                        match input_state {
+                            InputState::CommandCompleted(command_data) => {
+                                info!("Command completed: {:?}", command_data);
+                                editor.execute_command(command_data)?;
+                                event_keys.clear();
+                            }
+                            InputState::CommandInvalid(key_codes) => {
+                                //　TODO: error message
+                                error!("Invalid command: {:?}", key_codes);
+                                event_keys.clear();
+                            }
+                            _ => {
+                                info!("Input state: {:?}", input_state);
+                            }
                         }
-                        InputState::CommandInvalid(key_codes) => {
-                            //　TODO: error message
-                            error!("Invalid command: {:?}", key_codes);
-                            event_keys.clear();
+                    }
+                } else if editor.is_ex_command_mode() {
+                    let key_data: KeyData = key_event.into();
+                    match key_data {
+                        KeyData {
+                            key_code: event::KeyCode::Enter,
+                            ..
+                        } => {
+                            let command_data = editor.get_ex_command_data();
+                            editor.execute_ex_command(command_data)?;
+                            editor.set_command_mode();
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Esc,
+                            ..
+                        } => {
+                            editor.set_command_mode();
+                            editor.status_line = "".to_string();
                         }
                         _ => {
-                            info!("Input state: {:?}", input_state);
+                            editor.append_ex_command(key_data);
                         }
                     }
                 } else if editor.is_insert_mode() {

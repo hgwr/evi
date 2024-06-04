@@ -5,6 +5,7 @@ mod main_loop;
 mod render;
 mod generic_error;
 mod util;
+mod ex;
 
 use log::{error, info};
 

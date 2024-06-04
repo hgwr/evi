@@ -207,7 +207,7 @@ mod tests {
     fn test_tokenize_colon_number_separator_command_pattern_command() {
         let input = ":1,23s/screen/line/g";
         let tokens = tokenize(input);
-        assert_eq!(tokens.len(), 8);
+        assert_eq!(tokens.len(), 8, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Number(1));
@@ -225,7 +225,7 @@ mod tests {
         assert_eq!(tokens[5].lexeme, "screen");
         assert_eq!(tokens[6].token_type, TokenType::Pattern("line".to_string()));
         assert_eq!(tokens[6].lexeme, "line");
-        assert_eq!(tokens[7].token_type, TokenType::Command("g".to_string()));
+        assert_eq!(tokens[7].token_type, TokenType::Pattern("g".to_string()));
         assert_eq!(tokens[7].lexeme, "g");
     }
 

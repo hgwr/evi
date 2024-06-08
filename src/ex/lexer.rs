@@ -1,11 +1,12 @@
 #[derive(Debug, PartialEq)]
 pub enum TokenType {
     Colon,
-    Command(String),
-    Number(usize),
-    Pattern(String),
-    Replacement(String),
-    Filename(String),
+    Command,
+    Option,
+    Number,
+    Pattern,
+    Replacement,
+    Filename,
     Separator,
     EndOfInput,
     Illegal,
@@ -17,10 +18,21 @@ pub struct Token {
     lexeme: String,
 }
 
+#[derive(Debug, PartialEq)]
+enum SubstitutionCommandState {
+    None,
+    Command,
+    Pattern,
+    Replace,
+    Options,
+    End,
+}
+
 struct Lexer {
     input: String,
     position: usize,
     current_char: Option<char>,
+    substitution_command_status: SubstitutionCommandState,
 }
 
 impl Lexer {
@@ -29,6 +41,7 @@ impl Lexer {
             input,
             position: 0,
             current_char: None,
+            substitution_command_status: SubstitutionCommandState::None,
         };
         lexer.read_char();
         lexer
@@ -104,7 +117,7 @@ impl Lexer {
             }
         }
         Token {
-            token_type: TokenType::Number(number.parse().unwrap()),
+            token_type: TokenType::Number,
             lexeme: number,
         }
     }
@@ -120,25 +133,51 @@ impl Lexer {
         }
         let lexeme: String = self.input[start..self.position - 1].to_string();
         self.rewind_char();
+        if lexeme == "s" {
+            self.substitution_command_status = SubstitutionCommandState::Command;
+        }
         Token {
-            token_type: TokenType::Command(lexeme.clone()),
+            token_type: TokenType::Command,
             lexeme,
         }
     }
 
     fn read_pattern(&mut self) -> Token {
+        if self.substitution_command_status == SubstitutionCommandState::Command {
+            self.substitution_command_status = SubstitutionCommandState::Pattern;
+        } else if (self.substitution_command_status == SubstitutionCommandState::Pattern) {
+            self.substitution_command_status = SubstitutionCommandState::Replace;
+        } else if (self.substitution_command_status == SubstitutionCommandState::Replace) {
+            self.substitution_command_status = SubstitutionCommandState::Options;
+        } else {
+            self.substitution_command_status = SubstitutionCommandState::Pattern;
+        }
+
         self.read_char(); // skip initial '/'
         let start = self.position - 1;
+        let mut escaped = false;
         while let Some(c) = self.current_char {
-            if c == '/' {
+            if c == '\\' {
+                escaped = !escaped;
+            } else if c == '/' && !escaped {
                 break;
+            } else {
+                escaped = false;
             }
             self.read_char();
         }
         let lexeme: String = self.input[start..self.position - 1].to_string();
         self.rewind_char();
+
         Token {
-            token_type: TokenType::Pattern(lexeme.clone()),
+            token_type:
+                if self.substitution_command_status == SubstitutionCommandState::Replace {
+                    TokenType::Replacement
+                } else if self.substitution_command_status == SubstitutionCommandState::Options {
+                    TokenType::Option
+                } else {
+                    TokenType::Pattern
+                },
             lexeme,
         }
     }
@@ -181,7 +220,7 @@ mod tests {
         assert_eq!(tokens.len(), 2, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
-        assert_eq!(tokens[1].token_type, TokenType::Command("q".to_string()));
+        assert_eq!(tokens[1].token_type, TokenType::Command);
         assert_eq!(tokens[1].lexeme, "q");
     }
 
@@ -193,13 +232,13 @@ mod tests {
         assert_eq!(tokens.len(), 5, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
-        assert_eq!(tokens[1].token_type, TokenType::Number(1));
+        assert_eq!(tokens[1].token_type, TokenType::Number);
         assert_eq!(tokens[1].lexeme, "1");
         assert_eq!(tokens[2].token_type, TokenType::Separator);
         assert_eq!(tokens[2].lexeme, ",");
-        assert_eq!(tokens[3].token_type, TokenType::Number(23));
+        assert_eq!(tokens[3].token_type, TokenType::Number);
         assert_eq!(tokens[3].lexeme, "23");
-        assert_eq!(tokens[4].token_type, TokenType::Command("p".to_string()));
+        assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "p");
     }
 
@@ -210,22 +249,19 @@ mod tests {
         assert_eq!(tokens.len(), 8, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
-        assert_eq!(tokens[1].token_type, TokenType::Number(1));
+        assert_eq!(tokens[1].token_type, TokenType::Number);
         assert_eq!(tokens[1].lexeme, "1");
         assert_eq!(tokens[2].token_type, TokenType::Separator);
         assert_eq!(tokens[2].lexeme, ",");
-        assert_eq!(tokens[3].token_type, TokenType::Number(23));
+        assert_eq!(tokens[3].token_type, TokenType::Number);
         assert_eq!(tokens[3].lexeme, "23");
-        assert_eq!(tokens[4].token_type, TokenType::Command("s".to_string()));
+        assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "s");
-        assert_eq!(
-            tokens[5].token_type,
-            TokenType::Pattern("screen".to_string())
-        );
+        assert_eq!(tokens[5].token_type, TokenType::Pattern);
         assert_eq!(tokens[5].lexeme, "screen");
-        assert_eq!(tokens[6].token_type, TokenType::Pattern("line".to_string()));
+        assert_eq!(tokens[6].token_type, TokenType::Replacement);
         assert_eq!(tokens[6].lexeme, "line");
-        assert_eq!(tokens[7].token_type, TokenType::Pattern("g".to_string()));
+        assert_eq!(tokens[7].token_type, TokenType::Option);
         assert_eq!(tokens[7].lexeme, "g");
     }
 
@@ -236,15 +272,15 @@ mod tests {
         assert_eq!(tokens.len(), 6);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
-        assert_eq!(tokens[1].token_type, TokenType::Number(10));
+        assert_eq!(tokens[1].token_type, TokenType::Number);
         assert_eq!(tokens[1].lexeme, "10");
         assert_eq!(tokens[2].token_type, TokenType::Separator);
         assert_eq!(tokens[2].lexeme, ",");
-        assert_eq!(tokens[3].token_type, TokenType::Command("$".to_string()));
+        assert_eq!(tokens[3].token_type, TokenType::Command);
         assert_eq!(tokens[3].lexeme, "$");
-        assert_eq!(tokens[4].token_type, TokenType::Command("m".to_string()));
+        assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "m");
-        assert_eq!(tokens[5].token_type, TokenType::Command(".-2".to_string()));
+        assert_eq!(tokens[5].token_type, TokenType::Command);
         assert_eq!(tokens[5].lexeme, ".-2");
     }
 
@@ -255,16 +291,13 @@ mod tests {
         assert_eq!(tokens.len(), 5);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
-        assert_eq!(tokens[1].token_type, TokenType::Command(".".to_string()));
+        assert_eq!(tokens[1].token_type, TokenType::Command);
         assert_eq!(tokens[1].lexeme, ".");
         assert_eq!(tokens[2].token_type, TokenType::Separator);
         assert_eq!(tokens[2].lexeme, ",");
-        assert_eq!(
-            tokens[3].token_type,
-            TokenType::Pattern("while".to_string())
-        );
+        assert_eq!(tokens[3].token_type, TokenType::Pattern);
         assert_eq!(tokens[3].lexeme, "while");
-        assert_eq!(tokens[4].token_type, TokenType::Command("d".to_string()));
+        assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "d");
     }
 
@@ -275,20 +308,17 @@ mod tests {
         assert_eq!(tokens.len(), 7);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
-        assert_eq!(tokens[1].token_type, TokenType::Number(1));
+        assert_eq!(tokens[1].token_type, TokenType::Number);
         assert_eq!(tokens[1].lexeme, "1");
         assert_eq!(tokens[2].token_type, TokenType::Separator);
         assert_eq!(tokens[2].lexeme, ",");
-        assert_eq!(tokens[3].token_type, TokenType::Number(10));
+        assert_eq!(tokens[3].token_type, TokenType::Number);
         assert_eq!(tokens[3].lexeme, "10");
-        assert_eq!(tokens[4].token_type, TokenType::Command("g".to_string()));
+        assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "g");
-        assert_eq!(
-            tokens[5].token_type,
-            TokenType::Pattern("pattern".to_string())
-        );
+        assert_eq!(tokens[5].token_type, TokenType::Pattern);
         assert_eq!(tokens[5].lexeme, "pattern");
-        assert_eq!(tokens[6].token_type, TokenType::Command("p".to_string()));
+        assert_eq!(tokens[6].token_type, TokenType::Command);
         assert_eq!(tokens[6].lexeme, "p");
     }
 }

@@ -21,6 +21,7 @@ pub struct Token {
 #[derive(Debug, PartialEq)]
 enum SubstitutionCommandState {
     None,
+    AddressPattern,
     Command,
     Pattern,
     Replace,
@@ -154,7 +155,7 @@ impl Lexer {
         } else if (self.substitution_command_status == SubstitutionCommandState::Replace) {
             self.substitution_command_status = SubstitutionCommandState::Options;
         } else {
-            self.substitution_command_status = SubstitutionCommandState::Pattern;
+            self.substitution_command_status = SubstitutionCommandState::AddressPattern;
         }
 
         self.read_char(); // skip initial '/'
@@ -175,7 +176,9 @@ impl Lexer {
 
         Token {
             token_type:
-                if self.substitution_command_status == SubstitutionCommandState::Replace {
+                if self.substitution_command_status == SubstitutionCommandState::Pattern {
+                    TokenType::Pattern
+                } else if self.substitution_command_status == SubstitutionCommandState::Replace {
                     TokenType::Replacement
                 } else if self.substitution_command_status == SubstitutionCommandState::Options {
                     TokenType::Option

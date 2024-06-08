@@ -84,6 +84,10 @@ impl Lexer {
                     lexeme: ch.to_string(),
                 },
                 '/' => self.read_pattern(),
+                '!' | '#' | '=' | '.' | '-' | '+' | '*' | '%' | '$' | '^' => Token {
+                    token_type: TokenType::Command,
+                    lexeme: ch.to_string(),
+                },
                 '0'..='9' => self.read_number(),
                 _ if ch.is_alphabetic() => self.read_command(),
                 _ => Token {
@@ -269,7 +273,7 @@ mod tests {
     fn test_tokenize_colon_number_command_command_command() {
         let input = ":10,$m.-2";
         let tokens = tokenize(input);
-        assert_eq!(tokens.len(), 6);
+        assert_eq!(tokens.len(), 8);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Number);
@@ -281,7 +285,11 @@ mod tests {
         assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "m");
         assert_eq!(tokens[5].token_type, TokenType::Command);
-        assert_eq!(tokens[5].lexeme, ".-2");
+        assert_eq!(tokens[5].lexeme, ".");
+        assert_eq!(tokens[6].token_type, TokenType::Command);
+        assert_eq!(tokens[6].lexeme, "-");
+        assert_eq!(tokens[7].token_type, TokenType::Number);
+        assert_eq!(tokens[7].lexeme, "2");
     }
 
     #[test]

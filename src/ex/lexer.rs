@@ -163,7 +163,6 @@ impl Lexer {
             self.read_char();
         }
         let lexeme: String = self.input[start..self.position - 1].to_string();
-        self.rewind_char();
 
         Token {
             token_type: TokenType::AddressPattern,
@@ -336,7 +335,7 @@ mod tests {
     fn test_tokenize_colon_number_command_command_command() {
         let input = ":10,$m.-2";
         let tokens = tokenize(input);
-        assert_eq!(tokens.len(), 8);
+        assert_eq!(tokens.len(), 9);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Number);
@@ -353,23 +352,25 @@ mod tests {
         assert_eq!(tokens[6].lexeme, "-");
         assert_eq!(tokens[7].token_type, TokenType::Number);
         assert_eq!(tokens[7].lexeme, "2");
+        assert_eq!(tokens[8].token_type, TokenType::EndOfInput);
     }
 
     #[test]
     fn test_tokenize_colon_command_separator_pattern_command() {
         let input = ":.,/while/d";
         let tokens = tokenize(input);
-        assert_eq!(tokens.len(), 5);
+        assert_eq!(tokens.len(), 6, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Command);
         assert_eq!(tokens[1].lexeme, ".");
         assert_eq!(tokens[2].token_type, TokenType::Separator);
         assert_eq!(tokens[2].lexeme, ",");
-        assert_eq!(tokens[3].token_type, TokenType::Pattern);
+        assert_eq!(tokens[3].token_type, TokenType::AddressPattern);
         assert_eq!(tokens[3].lexeme, "while");
         assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "d");
+        assert_eq!(tokens[5].token_type, TokenType::EndOfInput);
     }
 
     #[test]

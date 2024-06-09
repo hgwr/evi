@@ -106,8 +106,6 @@ impl Lexer {
             }],
         };
         self.read_char();
-        println!("token: {:?}", tokens);
-        println!("current_char: {:?}", self.current_char);
         tokens
     }
 
@@ -306,7 +304,6 @@ mod tests {
     fn test_tokenize_colon_command() {
         let input = ":q";
         let tokens = tokenize(input);
-        println!("tokens: {:?}", tokens); // Add this line to print the value of tokens
         assert_eq!(tokens.len(), 3, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
@@ -319,7 +316,6 @@ mod tests {
     fn test_tokenize_number_separator_command() {
         let input = ":1,23p";
         let tokens = tokenize(input);
-        println!("tokens: {:?}", tokens); // Add this line to print the value of tokens
         assert_eq!(tokens.len(), 6, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");

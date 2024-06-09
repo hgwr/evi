@@ -5,6 +5,7 @@ pub enum TokenType {
     Option,
     Number,
     Pattern,
+    AddressPattern,
     Replacement,
     Filename,
     Separator,
@@ -21,7 +22,6 @@ pub struct Token {
 #[derive(Debug, PartialEq)]
 enum SubstitutionCommandState {
     None,
-    AddressPattern,
     Command,
     Pattern,
     Replace,
@@ -72,39 +72,40 @@ impl Lexer {
         }
     }
 
-    fn next_token(&mut self) -> Token {
+    fn next_tokens(&mut self) -> Vec<Token> {
         self.skip_whitespace();
-        let token = match self.current_char {
+        let tokens: Vec<Token> = match self.current_char {
             Some(ch) => match ch {
-                ':' => Token {
+                ':' => vec![Token {
                     token_type: TokenType::Colon,
                     lexeme: ch.to_string(),
-                },
-                ',' => Token {
+                }],
+                ',' => vec![Token {
                     token_type: TokenType::Separator,
                     lexeme: ch.to_string(),
-                },
-                '/' => self.read_pattern(),
-                '!' | '#' | '=' | '.' | '-' | '+' | '*' | '%' | '$' | '^' => Token {
+                }],
+                '/' => vec![self.read_pattern()],
+                '!' | '#' | '=' | '.' | '-' | '+' | '*' | '%' | '$' | '^' => vec![Token {
                     token_type: TokenType::Command,
                     lexeme: ch.to_string(),
-                },
-                '0'..='9' => self.read_number(),
-                _ if ch.is_alphabetic() => self.read_command(),
-                _ => Token {
+                }],
+                '0'..='9' => vec![self.read_number()],
+                's' => self.read_substitution_command(),
+                _ if ch.is_alphabetic() => vec![self.read_command()],
+                _ => vec![Token {
                     token_type: TokenType::Illegal,
                     lexeme: ch.to_string(),
-                },
+                }],
             },
-            None => Token {
+            None => vec![Token {
                 token_type: TokenType::EndOfInput,
                 lexeme: "".to_string(),
-            },
+            }],
         };
         self.read_char();
-        println!("token: {:?}", token);
+        println!("token: {:?}", tokens);
         println!("current_char: {:?}", self.current_char);
-        token
+        tokens
     }
 
     fn read_number(&mut self) -> Token {
@@ -114,11 +115,11 @@ impl Lexer {
                 '0'..='9' => {
                     number.push(ch);
                     self.read_char();
-                },
+                }
                 _ => {
                     self.rewind_char();
-                    break
-                },
+                    break;
+                }
             }
         }
         Token {
@@ -148,16 +149,6 @@ impl Lexer {
     }
 
     fn read_pattern(&mut self) -> Token {
-        if self.substitution_command_status == SubstitutionCommandState::Command {
-            self.substitution_command_status = SubstitutionCommandState::Pattern;
-        } else if (self.substitution_command_status == SubstitutionCommandState::Pattern) {
-            self.substitution_command_status = SubstitutionCommandState::Replace;
-        } else if (self.substitution_command_status == SubstitutionCommandState::Replace) {
-            self.substitution_command_status = SubstitutionCommandState::Options;
-        } else {
-            self.substitution_command_status = SubstitutionCommandState::AddressPattern;
-        }
-
         self.read_char(); // skip initial '/'
         let start = self.position - 1;
         let mut escaped = false;
@@ -175,18 +166,87 @@ impl Lexer {
         self.rewind_char();
 
         Token {
-            token_type:
-                if self.substitution_command_status == SubstitutionCommandState::Pattern {
-                    TokenType::Pattern
-                } else if self.substitution_command_status == SubstitutionCommandState::Replace {
-                    TokenType::Replacement
-                } else if self.substitution_command_status == SubstitutionCommandState::Options {
-                    TokenType::Option
-                } else {
-                    TokenType::Pattern
-                },
+            token_type: TokenType::AddressPattern,
             lexeme,
         }
+    }
+
+    fn read_substitution_command(&mut self) -> Vec<Token> {
+        let mut tokens = Vec::new();
+        let mut lexeme = String::new();
+        let mut state = SubstitutionCommandState::Command;
+        let mut escaped = false;
+        while let Some(c) = self.current_char {
+            match state {
+                SubstitutionCommandState::Command => {
+                    if c == 's' {
+                        lexeme.push(c);
+                        tokens.push(Token {
+                            token_type: TokenType::Command,
+                            lexeme,
+                        });
+                        lexeme = String::new();
+                        state = SubstitutionCommandState::Pattern;
+                    } else {
+                        break;
+                    }
+                }
+                SubstitutionCommandState::Pattern => {
+                    if c == '\\' {
+                        escaped = !escaped;
+                    } else if c == '/' && !escaped {
+                        lexeme.push(c);
+                        tokens.push(Token {
+                            token_type: TokenType::Pattern,
+                            lexeme,
+                        });
+                        lexeme = String::new();
+                        state = SubstitutionCommandState::Replace;
+                    } else {
+                        escaped = false;
+                        lexeme.push(c);
+                    }
+                }
+                SubstitutionCommandState::Replace => {
+                    if c == '\\' {
+                        escaped = !escaped;
+                    } else if c == '/' && !escaped {
+                        lexeme.push(c);
+                        tokens.push(Token {
+                            token_type: TokenType::Replacement,
+                            lexeme,
+                        });
+                        lexeme = String::new();
+                        state = SubstitutionCommandState::Options;
+                    } else {
+                        escaped = false;
+                        lexeme.push(c);
+                    }
+                }
+                SubstitutionCommandState::Options => {
+                    if c == 'g' {
+                        lexeme.push(c);
+                        tokens.push(Token {
+                            token_type: TokenType::Option,
+                            lexeme,
+                        });
+                        lexeme = String::new();
+                        state = SubstitutionCommandState::End;
+                    } else {
+                        break;
+                    }
+                }
+                SubstitutionCommandState::End => {
+                    break;
+                }
+                SubstitutionCommandState::None => {
+                    break;
+                }
+            }
+            self.read_char();
+        }
+        self.rewind_char();
+        tokens
     }
 
     fn skip_whitespace(&mut self) {
@@ -205,11 +265,11 @@ pub fn tokenize(input: &str) -> Vec<Token> {
     let mut tokens = Vec::new();
 
     loop {
-        let token = lexer.next_token();
-        if token.token_type == TokenType::EndOfInput {
+        let mut next_tokens = lexer.next_tokens();
+        tokens.append(&mut next_tokens);
+        if tokens.last().unwrap().token_type == TokenType::EndOfInput {
             break;
         }
-        tokens.push(token);
     }
 
     tokens

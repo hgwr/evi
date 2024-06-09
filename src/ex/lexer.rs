@@ -23,8 +23,11 @@ pub struct Token {
 enum SubstitutionCommandState {
     None,
     Command,
+    FirstSeparator,
     Pattern,
+    SecondSeparator,
     Replace,
+    ThirdSeparator,
     Options,
     End,
 }
@@ -185,6 +188,13 @@ impl Lexer {
                             lexeme,
                         });
                         lexeme = String::new();
+                        state = SubstitutionCommandState::FirstSeparator;
+                    } else {
+                        break;
+                    }
+                }
+                SubstitutionCommandState::FirstSeparator => {
+                    if c == '/' {
                         state = SubstitutionCommandState::Pattern;
                     } else {
                         break;
@@ -194,32 +204,46 @@ impl Lexer {
                     if c == '\\' {
                         escaped = !escaped;
                     } else if c == '/' && !escaped {
-                        lexeme.push(c);
+                        self.rewind_char();
                         tokens.push(Token {
                             token_type: TokenType::Pattern,
                             lexeme,
                         });
                         lexeme = String::new();
-                        state = SubstitutionCommandState::Replace;
+                        state = SubstitutionCommandState::SecondSeparator;
                     } else {
                         escaped = false;
                         lexeme.push(c);
+                    }
+                }
+                SubstitutionCommandState::SecondSeparator => {
+                    if c == '/' {
+                        state = SubstitutionCommandState::Replace;
+                    } else {
+                        break;
                     }
                 }
                 SubstitutionCommandState::Replace => {
                     if c == '\\' {
                         escaped = !escaped;
                     } else if c == '/' && !escaped {
-                        lexeme.push(c);
+                        self.rewind_char();
                         tokens.push(Token {
                             token_type: TokenType::Replacement,
                             lexeme,
                         });
                         lexeme = String::new();
-                        state = SubstitutionCommandState::Options;
+                        state = SubstitutionCommandState::ThirdSeparator;
                     } else {
                         escaped = false;
                         lexeme.push(c);
+                    }
+                }
+                SubstitutionCommandState::ThirdSeparator => {
+                    if c == '/' {
+                        state = SubstitutionCommandState::Options;
+                    } else {
+                        break;
                     }
                 }
                 SubstitutionCommandState::Options => {
@@ -312,7 +336,7 @@ mod tests {
     fn test_tokenize_colon_number_separator_command_pattern_command() {
         let input = ":1,23s/screen\\/slash/line/g";
         let tokens = tokenize(input);
-        assert_eq!(tokens.len(), 8, "tokens: {:?}", tokens);
+        assert_eq!(tokens.len(), 9, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Number);
@@ -324,11 +348,12 @@ mod tests {
         assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "s");
         assert_eq!(tokens[5].token_type, TokenType::Pattern);
-        assert_eq!(tokens[5].lexeme, "screen\\/slash");
+        assert_eq!(tokens[5].lexeme, "screen/slash");
         assert_eq!(tokens[6].token_type, TokenType::Replacement);
         assert_eq!(tokens[6].lexeme, "line");
         assert_eq!(tokens[7].token_type, TokenType::Option);
         assert_eq!(tokens[7].lexeme, "g");
+        assert_eq!(tokens[8].token_type, TokenType::EndOfInput);
     }
 
     #[test]

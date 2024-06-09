@@ -307,11 +307,12 @@ mod tests {
         let input = ":q";
         let tokens = tokenize(input);
         println!("tokens: {:?}", tokens); // Add this line to print the value of tokens
-        assert_eq!(tokens.len(), 2, "tokens: {:?}", tokens);
+        assert_eq!(tokens.len(), 3, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Command);
         assert_eq!(tokens[1].lexeme, "q");
+        assert_eq!(tokens[2].token_type, TokenType::EndOfInput);
     }
 
     #[test]
@@ -319,7 +320,7 @@ mod tests {
         let input = ":1,23p";
         let tokens = tokenize(input);
         println!("tokens: {:?}", tokens); // Add this line to print the value of tokens
-        assert_eq!(tokens.len(), 5, "tokens: {:?}", tokens);
+        assert_eq!(tokens.len(), 6, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Number);
@@ -330,6 +331,7 @@ mod tests {
         assert_eq!(tokens[3].lexeme, "23");
         assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "p");
+        assert_eq!(tokens[5].token_type, TokenType::EndOfInput);
     }
 
     #[test]
@@ -402,7 +404,7 @@ mod tests {
     fn test_tokenize_colon_number_separator_command_pattern_command2() {
         let input = ":1,10g/pattern/p";
         let tokens = tokenize(input);
-        assert_eq!(tokens.len(), 7);
+        assert_eq!(tokens.len(), 8);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Number);
@@ -413,9 +415,10 @@ mod tests {
         assert_eq!(tokens[3].lexeme, "10");
         assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "g");
-        assert_eq!(tokens[5].token_type, TokenType::Pattern);
+        assert_eq!(tokens[5].token_type, TokenType::AddressPattern);
         assert_eq!(tokens[5].lexeme, "pattern");
         assert_eq!(tokens[6].token_type, TokenType::Command);
         assert_eq!(tokens[6].lexeme, "p");
+        assert_eq!(tokens[7].token_type, TokenType::EndOfInput);
     }
 }

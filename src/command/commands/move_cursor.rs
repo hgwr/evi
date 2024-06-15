@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
@@ -28,6 +30,10 @@ impl Command for ForwardChar {
         }
         Ok(())
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 pub struct BackwardChar;
@@ -54,6 +60,10 @@ impl Command for BackwardChar {
         }
         Ok(())
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 pub struct MoveBeginningOfLine;
@@ -64,6 +74,10 @@ impl Command for MoveBeginningOfLine {
             backward_char.execute(editor)?;
         }
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -77,6 +91,10 @@ impl Command for MoveEndOfLine {
             forward_char.execute(editor)?;
         }
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -112,6 +130,10 @@ impl Command for NextLine {
             }
         }
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -151,6 +173,10 @@ impl Command for PreviousLine {
             }
         }
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -194,6 +220,10 @@ impl Command for ForwardWord {
             }
         }
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -244,5 +274,9 @@ impl Command for BackwardWord {
             forward_char.execute(editor)?;
         }
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

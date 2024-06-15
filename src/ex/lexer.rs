@@ -16,8 +16,8 @@ pub enum TokenType {
 
 #[derive(Debug)]
 pub struct Token {
-    token_type: TokenType,
-    lexeme: String,
+    pub token_type: TokenType,
+    pub lexeme: String,
 }
 
 #[derive(Debug, PartialEq)]
@@ -298,7 +298,8 @@ impl Lexer {
                     if c.is_whitespace() {
                         file_command_status = FileCommandState::Filename;
                     } else {
-                        lexeme.push(c);
+                        self.rewind_char();
+                        break;
                     }
                 }
                 FileCommandState::Filename => {
@@ -492,6 +493,32 @@ mod tests {
         assert_eq!(tokens[1].lexeme, "r");
         assert_eq!(tokens[2].token_type, TokenType::Filename);
         assert_eq!(tokens[2].lexeme, "file with spaces.txt");
+        assert_eq!(tokens[3].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_q() {
+        let input = ":q";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].token_type, TokenType::Colon);
+        assert_eq!(tokens[0].lexeme, ":");
+        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].lexeme, "q");
+        assert_eq!(tokens[2].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_wq() {
+        let input = ":wq";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(tokens[0].token_type, TokenType::Colon);
+        assert_eq!(tokens[0].lexeme, ":");
+        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].lexeme, "w");
+        assert_eq!(tokens[2].token_type, TokenType::Command);
+        assert_eq!(tokens[2].lexeme, "q");
         assert_eq!(tokens[3].token_type, TokenType::EndOfInput);
     }
 }

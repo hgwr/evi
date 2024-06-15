@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::command::base::Command;
 use crate::command::region::get_region;
 use crate::editor::Editor;
@@ -86,6 +88,10 @@ impl Command for DeleteChar {
         new_delete.execute(editor)?;
         Ok(Some(new_delete))
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -153,5 +159,9 @@ impl Command for Delete {
             }
         }
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

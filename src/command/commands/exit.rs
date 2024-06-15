@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
@@ -14,5 +16,9 @@ impl Command for ExitCommand {
         }
         editor.should_exit = true;
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

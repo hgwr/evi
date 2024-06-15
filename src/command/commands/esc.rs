@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
@@ -13,5 +15,9 @@ impl Command for Esc {
         }
         editor.status_line = "".to_string();
         Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use log::info;
 
 use crate::command::base::Command;
@@ -103,5 +105,9 @@ impl Command for Insert {
         }
 
         Ok(Some(new_insert))
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

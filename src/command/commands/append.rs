@@ -1,4 +1,5 @@
 use log::info;
+use std::any::Any;
 
 use crate::command::base::Command;
 use crate::editor::Editor;
@@ -121,4 +122,7 @@ impl Command for Append {
         Ok(Some(new_insert))
     }
 
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }

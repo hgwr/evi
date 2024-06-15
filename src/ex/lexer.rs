@@ -33,11 +33,20 @@ enum SubstitutionCommandState {
     End,
 }
 
+#[derive(Debug, PartialEq)]
+enum FileCommandState {
+    None,
+    Command,
+    Filename,
+    End,
+}
+
 struct Lexer {
     input: String,
     position: usize,
     current_char: Option<char>,
     substitution_command_status: SubstitutionCommandState,
+    file_command_status: FileCommandState,
 }
 
 impl Lexer {
@@ -47,6 +56,7 @@ impl Lexer {
             position: 0,
             current_char: None,
             substitution_command_status: SubstitutionCommandState::None,
+            file_command_status: FileCommandState::None,
         };
         lexer.read_char();
         lexer
@@ -95,6 +105,7 @@ impl Lexer {
                 }],
                 '0'..='9' => vec![self.read_number()],
                 's' => self.read_substitution_command(),
+                'r' | 'w' => self.file_command(),
                 _ if ch.is_alphabetic() => vec![self.read_command()],
                 _ => vec![Token {
                     token_type: TokenType::Illegal,
@@ -271,6 +282,49 @@ impl Lexer {
         tokens
     }
 
+    fn file_command(&mut self) -> Vec<Token> {
+        let mut tokens = Vec::new();
+        let mut lexeme = String::new();
+        while let Some(c) = self.current_char {
+            match self.file_command_status {
+                FileCommandState::None => {
+                    if c == 'r' || c == 'w' {
+                        lexeme.push(c);
+                        tokens.push(Token {
+                            token_type: TokenType::Command,
+                            lexeme,
+                        });
+                        lexeme = String::new();
+                    } else {
+                        break;
+                    }
+                    self.file_command_status = FileCommandState::Command;
+                }
+                FileCommandState::Command => {
+                    if c.is_whitespace() {
+                        self.file_command_status = FileCommandState::Filename;
+                    } else {
+                        lexeme.push(c);
+                    }
+                }
+                FileCommandState::Filename => {
+                    lexeme.push(c);
+                }
+                FileCommandState::End => {
+                    break;
+                }
+            }
+            self.read_char();
+        }
+        if self.file_command_status == FileCommandState::Filename {
+            tokens.push(Token {
+                token_type: TokenType::Filename,
+                lexeme,
+            });
+        }
+        tokens
+    }
+
     fn skip_whitespace(&mut self) {
         while let Some(c) = self.current_char {
             if c.is_whitespace() {
@@ -417,5 +471,33 @@ mod tests {
         assert_eq!(tokens[6].token_type, TokenType::Command);
         assert_eq!(tokens[6].lexeme, "p");
         assert_eq!(tokens[7].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_read_file() {
+        let input = ":r file.txt";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(tokens[0].token_type, TokenType::Colon);
+        assert_eq!(tokens[0].lexeme, ":");
+        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].lexeme, "r");
+        assert_eq!(tokens[2].token_type, TokenType::Filename);
+        assert_eq!(tokens[2].lexeme, "file.txt");
+        assert_eq!(tokens[3].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_read_file_with_spaces() {
+        let input = ":r file with spaces.txt";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(tokens[0].token_type, TokenType::Colon);
+        assert_eq!(tokens[0].lexeme, ":");
+        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].lexeme, "r");
+        assert_eq!(tokens[2].token_type, TokenType::Filename);
+        assert_eq!(tokens[2].lexeme, "file with spaces.txt");
+        assert_eq!(tokens[3].token_type, TokenType::EndOfInput);
     }
 }

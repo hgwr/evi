@@ -4,6 +4,7 @@ pub enum TokenType {
     Command,
     Option,
     Number,
+    Symbol,
     Pattern,
     AddressPattern,
     Replacement,
@@ -89,7 +90,7 @@ impl Lexer {
                 }],
                 '/' => vec![self.read_pattern()],
                 '!' | '#' | '=' | '.' | '-' | '+' | '*' | '%' | '$' | '^' => vec![Token {
-                    token_type: TokenType::Command,
+                    token_type: TokenType::Symbol,
                     lexeme: ch.to_string(),
                 }],
                 '0'..='9' => vec![self.read_number()],
@@ -365,13 +366,13 @@ mod tests {
         assert_eq!(tokens[1].lexeme, "10");
         assert_eq!(tokens[2].token_type, TokenType::Separator);
         assert_eq!(tokens[2].lexeme, ",");
-        assert_eq!(tokens[3].token_type, TokenType::Command);
+        assert_eq!(tokens[3].token_type, TokenType::Symbol);
         assert_eq!(tokens[3].lexeme, "$");
         assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "m");
-        assert_eq!(tokens[5].token_type, TokenType::Command);
+        assert_eq!(tokens[5].token_type, TokenType::Symbol);
         assert_eq!(tokens[5].lexeme, ".");
-        assert_eq!(tokens[6].token_type, TokenType::Command);
+        assert_eq!(tokens[6].token_type, TokenType::Symbol);
         assert_eq!(tokens[6].lexeme, "-");
         assert_eq!(tokens[7].token_type, TokenType::Number);
         assert_eq!(tokens[7].lexeme, "2");
@@ -385,7 +386,7 @@ mod tests {
         assert_eq!(tokens.len(), 6, "tokens: {:?}", tokens);
         assert_eq!(tokens[0].token_type, TokenType::Colon);
         assert_eq!(tokens[0].lexeme, ":");
-        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].token_type, TokenType::Symbol);
         assert_eq!(tokens[1].lexeme, ".");
         assert_eq!(tokens[2].token_type, TokenType::Separator);
         assert_eq!(tokens[2].lexeme, ",");

@@ -45,8 +45,6 @@ struct Lexer {
     input: String,
     position: usize,
     current_char: Option<char>,
-    substitution_command_status: SubstitutionCommandState,
-    file_command_status: FileCommandState,
 }
 
 impl Lexer {
@@ -55,8 +53,6 @@ impl Lexer {
             input,
             position: 0,
             current_char: None,
-            substitution_command_status: SubstitutionCommandState::None,
-            file_command_status: FileCommandState::None,
         };
         lexer.read_char();
         lexer
@@ -152,9 +148,6 @@ impl Lexer {
         }
         let lexeme: String = self.input[start..self.position - 1].to_string();
         self.rewind_char();
-        if lexeme == "s" {
-            self.substitution_command_status = SubstitutionCommandState::Command;
-        }
         Token {
             token_type: TokenType::Command,
             lexeme,
@@ -285,8 +278,9 @@ impl Lexer {
     fn file_command(&mut self) -> Vec<Token> {
         let mut tokens = Vec::new();
         let mut lexeme = String::new();
+        let mut file_command_status = FileCommandState::None;
         while let Some(c) = self.current_char {
-            match self.file_command_status {
+            match file_command_status {
                 FileCommandState::None => {
                     if c == 'r' || c == 'w' {
                         lexeme.push(c);
@@ -298,11 +292,11 @@ impl Lexer {
                     } else {
                         break;
                     }
-                    self.file_command_status = FileCommandState::Command;
+                    file_command_status = FileCommandState::Command;
                 }
                 FileCommandState::Command => {
                     if c.is_whitespace() {
-                        self.file_command_status = FileCommandState::Filename;
+                        file_command_status = FileCommandState::Filename;
                     } else {
                         lexeme.push(c);
                     }
@@ -316,7 +310,7 @@ impl Lexer {
             }
             self.read_char();
         }
-        if self.file_command_status == FileCommandState::Filename {
+        if file_command_status == FileCommandState::Filename {
             tokens.push(Token {
                 token_type: TokenType::Filename,
                 lexeme,

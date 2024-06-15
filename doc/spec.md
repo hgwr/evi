@@ -69,8 +69,11 @@ TBD
 ### Substitution
 
 `:s/screen/line` Replace the first occurrence of `screen` with `line`
+
 `:s/screen/line/g` Replace all occurrences of `screen` with `line`
+
 `:1s/screen/line` Replace the first occurrence of `screen` with `line` in line 1
+
 `:1,3s/screen/line` Replace the first occurrence of `screen` with `line` in lines 1 to 3
 
 ### Deletion of lines
@@ -111,7 +114,9 @@ TBD
 `:%t$` Copy all lines and append them to the end of the file
 
 `:.,.+2d` Delete the current line and the next 2 lines
+
 `:10,$m.-2` Move from line 10 to the end of the file to 2 lines before the current line
+
 `:.,+10#` Display line numbers from the current line to 20 lines ahead
 
 `:-,+t0` Copy from the line above the cursor to the line below the cursor and insert it at the beginning of the file
@@ -121,12 +126,16 @@ TBD
 ### Global search
 
 `:g/pattern` Find the last occurrence of the pattern in the file and set it as the cursor line
+
 `:g/pattern/p` Find and display all lines in the file that contain the pattern
+
 `:g!/pattern/nu` Find and display all lines that do not contain the pattern, including line numbers
+
 `:1,10g/pattern/p` Find and display lines that contain the pattern from line 1 to line 10
 
 ### ex commands BNF
 
+```BNF
 <command> ::= ":" <simple_command> | ":" <complex_command>
 
 <simple_command> ::= "q" | "q!" | "w" | "w!" | "e!" | "x" | "wq" | "p" | ":=" | ".=" | "set number" | "set nonumber" | "set nu" | "set nonu"
@@ -149,3 +158,4 @@ TBD
 <replacement> ::= [a-zA-Z0-9]+
 <filename> ::= [a-zA-Z0-9._/-]+
 <global_option> ::= "p" | "nu"
+```

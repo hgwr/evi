@@ -244,7 +244,9 @@ impl Editor {
         let command_data = command_data.trim();
         let result = parse(command_data);
         if let Err(e) = result {
+            info!("Error: {}", e.to_string());
             self.status_line = e.to_string();
+            self.ex_command_data = "".to_string();
             return Ok(());
         }
         let mut command = result.unwrap();

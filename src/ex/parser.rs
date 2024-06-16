@@ -36,8 +36,8 @@ mod tests {
 
     #[test]
     fn test_parse_simple_command() {
-        let input = ":wq";
+        let input = "wq";
         let command = parse(input).unwrap();
-        assert!(command.is::<ExitCommand>());
+        assert!(command.is::<exit::ExitWithSaveCommand>());
     }
 }

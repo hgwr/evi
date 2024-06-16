@@ -8,10 +8,14 @@ use crossterm::{
 
 use log::info;
 
-use crate::{buffer::CursorPositionInBuffer, command::base::{Command, CommandData}};
 use crate::command::factory::command_factory;
 use crate::render::render;
 use crate::{buffer::Buffer, command::base::ExecutedCommand, generic_error::GenericResult};
+use crate::{
+    buffer::CursorPositionInBuffer,
+    command::base::{Command, CommandData},
+    ex::parser::parse,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TerminalSize {
@@ -238,16 +242,13 @@ impl Editor {
 
     pub fn execute_ex_command(&mut self, command_data: String) -> GenericResult<()> {
         let command_data = command_data.trim();
-        if command_data == "q" {
-            self.should_exit = true;
-        } else if command_data == "w" {
-            self.save_file()?;
-        } else if command_data == "wq" {
-            self.save_file()?;
-            self.should_exit = true;
-        } else {
-            self.status_line = "Unknown command".to_string();
+        let result = parse(command_data);
+        if let Err(e) = result {
+            self.status_line = e.to_string();
+            return Ok(());
         }
+        let mut command = result.unwrap();
+        command.execute(self)?;
         self.ex_command_data = "".to_string();
         Ok(())
     }

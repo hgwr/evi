@@ -5,7 +5,6 @@ use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
 pub struct ExitCommand;
-
 impl Command for ExitCommand {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if editor.is_dirty {
@@ -14,6 +13,34 @@ impl Command for ExitCommand {
                 return Err(e);
             }
         }
+        editor.should_exit = true;
+        Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+pub struct ExitWithSaveCommand;
+impl Command for ExitWithSaveCommand {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        let result = editor.save_file();
+        if let Err(e) = result {
+            return Err(e);
+        }
+        editor.should_exit = true;
+        Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+pub struct ExitWithoutSaveCommand;
+impl Command for ExitWithoutSaveCommand {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         editor.should_exit = true;
         Ok(())
     }

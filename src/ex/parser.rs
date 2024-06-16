@@ -1,11 +1,10 @@
 use log::info;
 
-use crate::ex::lexer;
 use crate::command::base::Command;
+use crate::ex::lexer;
 use crate::generic_error::GenericError;
 
-use crate::command::commands::exit::ExitCommand;
-
+use crate::command::commands::exit;
 
 pub fn parse(input: &str) -> Result<Box<dyn Command>, GenericError> {
     let tokens = lexer::tokenize(input);
@@ -20,16 +19,16 @@ pub fn parse(input: &str) -> Result<Box<dyn Command>, GenericError> {
 fn simple_command(tokens: Vec<lexer::Token>) -> Result<Option<Box<dyn Command>>, GenericError> {
     // tokens が "w", "q" は Ok(Some(Box::new(ExitCommand {}))) を返す。
     if tokens.len() == 3 {
-        if tokens[0].token_type == lexer::TokenType::Command &&
-            tokens[1].token_type == lexer::TokenType::Command {
+        if tokens[0].token_type == lexer::TokenType::Command
+            && tokens[1].token_type == lexer::TokenType::Command
+        {
             if tokens[0].lexeme == "w" && tokens[1].lexeme == "q" {
-                return Ok(Some(Box::new(ExitCommand {})));
+                return Ok(Some(Box::new(exit::ExitWithSaveCommand {})));
             }
         }
     }
     Ok(None)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -42,4 +41,3 @@ mod tests {
         assert!(command.is::<ExitCommand>());
     }
 }
-

@@ -36,7 +36,7 @@ impl BitOr for MyOption<Box<dyn Command>> {
 pub fn parse(input: &str) -> Result<Box<dyn Command>, GenericError> {
     let tokens = lexer::tokenize(input);
     info!("tokens {:?}", tokens);
-    let command_opt = simple_command(&tokens)?;
+    let command_opt = simple_command(&tokens)? | complex_command(&tokens)?;
     match command_opt {
         MyOption::Some(command) => Ok(command),
         MyOption::None => Err("Invalid command".to_string().into()),
@@ -75,6 +75,10 @@ fn wq_command(tokens: &Vec<lexer::Token>) -> Result<MyOption<Box<dyn Command>>, 
             }
         }
     }
+    Ok(MyOption::None)
+}
+
+fn complex_command(tokens: &Vec<lexer::Token>) -> Result<MyOption<Box<dyn Command>>, GenericError> {
     Ok(MyOption::None)
 }
 

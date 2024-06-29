@@ -240,9 +240,9 @@ impl Editor {
         self.ex_command_data.clone()
     }
 
-    pub fn execute_ex_command(&mut self, command_data: String) -> GenericResult<()> {
-        let command_data = command_data.trim();
-        let result = parse(command_data);
+    pub fn execute_ex_command(&mut self, ex_command_str: String) -> GenericResult<()> {
+        let ex_command_str = ex_command_str.trim();
+        let result = parse(ex_command_str);
         if let Err(e) = result {
             info!("Error: {}", e.to_string());
             self.status_line = e.to_string();
@@ -251,6 +251,16 @@ impl Editor {
         }
         let mut command = result.unwrap();
         command.execute(self)?;
+        let command_data = CommandData {
+            count: 1,
+            key_code: crossterm::event::KeyCode::Char(':'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: None,
+        };
+        self.command_history.push(vec![ExecutedCommand {
+            command_data,
+            command,
+        }]);
         self.ex_command_data = "".to_string();
         Ok(())
     }

@@ -1,3 +1,4 @@
+mod data;
 mod buffer;
 mod command;
 mod editor;

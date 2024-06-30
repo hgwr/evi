@@ -1,24 +1,5 @@
-#[derive(Debug, PartialEq)]
-pub enum TokenType {
-    Colon,
-    Command,
-    Option,
-    Number,
-    Symbol,
-    Pattern,
-    AddressPattern,
-    Replacement,
-    Filename,
-    Separator,
-    EndOfInput,
-    Illegal,
-}
-
-#[derive(Debug)]
-pub struct Token {
-    pub token_type: TokenType,
-    pub lexeme: String,
-}
+use crate::data::TokenType;
+use crate::data::Token;
 
 #[derive(Debug, PartialEq)]
 enum SubstitutionCommandState {
@@ -520,5 +501,23 @@ mod tests {
         assert_eq!(tokens[2].token_type, TokenType::Command);
         assert_eq!(tokens[2].lexeme, "q");
         assert_eq!(tokens[3].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_print_with_line_addresses() {
+        let input = ":1,2p";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 6);
+        assert_eq!(tokens[0].token_type, TokenType::Colon);
+        assert_eq!(tokens[0].lexeme, ":");
+        assert_eq!(tokens[1].token_type, TokenType::Number);
+        assert_eq!(tokens[1].lexeme, "1");
+        assert_eq!(tokens[2].token_type, TokenType::Separator);
+        assert_eq!(tokens[2].lexeme, ",");
+        assert_eq!(tokens[3].token_type, TokenType::Number);
+        assert_eq!(tokens[3].lexeme, "2");
+        assert_eq!(tokens[4].token_type, TokenType::Command);
+        assert_eq!(tokens[4].lexeme, "p");
+        assert_eq!(tokens[5].token_type, TokenType::EndOfInput);
     }
 }

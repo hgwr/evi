@@ -7,3 +7,4 @@ pub mod esc;
 pub mod delete;
 pub mod undo;
 pub mod append;
+pub mod print;

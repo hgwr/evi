@@ -1,13 +1,17 @@
-use log::info;
 use std::ops::BitOr;
 
 use crate::command::base::Command;
+use crate::data::LineAddressType;
+use crate::data::LineRange;
+use crate::data::Pattern;
+use crate::data::SimpleLineAddressType;
+use crate::data::Token;
+use crate::data::TokenType;
 use crate::ex::lexer;
 use crate::generic_error::GenericError;
 
 use crate::command::commands::exit;
-
-use super::lexer::TokenType;
+use crate::command::commands::print;
 
 enum MyOption<T> {
     Some(T),
@@ -35,43 +39,29 @@ impl BitOr for MyOption<Box<dyn Command>> {
     }
 }
 
-pub enum SimpleLineAddressType {
-    LineNumber(usize),
-    CurrentLine,
-    LastLine,
-    AllLines,
-}
-
-pub enum LineAddressType {
-    Absolute(SimpleLineAddressType),
-    Relative(SimpleLineAddressType, isize),
-}
-
-pub struct LineRange {
-    start: LineAddressType,
-    end: LineAddressType,
-}
-
 pub struct Parser {
-    tokens: Vec<lexer::Token>,
-    token: MyOption<lexer::Token>,
-    command: MyOption<Box<dyn Command>>,
-    line_range: MyOption<LineRange>,
+    tokens: Vec<Token>,
+    token_opt: MyOption<Token>,
+    stack: Vec<Token>,
+    command_opt: MyOption<Box<dyn Command>>,
+    line_range_opt: MyOption<LineRange>,
 }
 
 impl Parser {
     pub fn new(input: &str) -> Self {
         let tokens = lexer::tokenize(input);
-        info!("tokens {:?}", tokens);
+        println!("tokens {:?}", tokens);
         Parser {
             tokens,
-            token: MyOption::None,
-            command: MyOption::None,
-            line_range: MyOption::None,
+            token_opt: MyOption::None,
+            stack: Vec::new(),
+            command_opt: MyOption::None,
+            line_range_opt: MyOption::None,
         }
     }
 
     pub fn parse(&mut self) -> Result<Box<dyn Command>, GenericError> {
+        self.get_symbol();
         self.command()
     }
 
@@ -83,11 +73,22 @@ impl Parser {
         }
     }
 
-    fn get_symbol(&mut self) -> MyOption<lexer::Token> {
+    fn push(&mut self, token: Token) {
+        self.stack.push(token);
+    }
+
+    fn pop(&mut self) -> MyOption<Token> {
+        if self.stack.len() > 0 {
+            return MyOption::Some(self.stack.pop().unwrap());
+        }
+        MyOption::None
+    }
+
+    fn get_symbol(&mut self) {
         if self.tokens.len() > 0 {
-            return MyOption::Some(self.tokens.remove(0));
+            self.token_opt = MyOption::Some(self.tokens.remove(0));
         } else {
-            return MyOption::Some(lexer::Token {
+            self.token_opt = MyOption::Some(Token {
                 token_type: TokenType::EndOfInput,
                 lexeme: "".to_string(),
             });
@@ -98,21 +99,163 @@ impl Parser {
         format!("Error: {}", message).into()
     }
 
-    fn accept(&mut self, token_type: lexer::TokenType) -> bool {
-        if let MyOption::Some(token) = &self.token {
-            if token.token_type == token_type {
-                self.token = self.get_symbol();
+    fn accept(&mut self, token_type: TokenType, lexeme: &str) -> bool {
+        let expected_token = Token {
+            token_type,
+            lexeme: lexeme.to_string(),
+        };
+        if let MyOption::Some(token) = &self.token_opt {
+            if token.token_type == expected_token.token_type
+                && token.lexeme == expected_token.lexeme
+            {
+                self.push(token.clone());
+                self.get_symbol();
                 return true;
             }
         }
         false
     }
 
-    fn expect(&mut self, token_type: lexer::TokenType) -> Result<(), GenericError> {
-        if self.accept(token_type) {
-            return Ok(());
+    fn accept_type(&mut self, token_type: TokenType) -> bool {
+        if let MyOption::Some(token) = &self.token_opt {
+            if token.token_type == token_type {
+                self.push(token.clone());
+                self.get_symbol();
+                return true;
+            }
         }
-        Err(self.error("Unexpected token"))
+        false
+    }
+
+    fn complex_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        let line_range = if let MyOption::Some(range) = self.line_range()? {
+            range
+        } else {
+            LineRange {
+                start: LineAddressType::Absolute(SimpleLineAddressType::CurrentLine),
+                end: LineAddressType::Absolute(SimpleLineAddressType::CurrentLine),
+            }
+        };
+        let command_opt = self.display_command(line_range)? | self.substitute_command()?;
+        if let MyOption::Some(command) = command_opt {
+            return Ok(MyOption::Some(command));
+        }
+        Ok(MyOption::None)
+    }
+
+    fn display_command(&mut self, line_range: LineRange) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "p") {
+            let print_command = print::PrintCommand {
+                line_range
+            };
+            return Ok(MyOption::Some(Box::new(print_command)));
+        }
+        Ok(MyOption::None)
+    }
+
+    fn line_range(&mut self) -> Result<MyOption<LineRange>, GenericError> {
+        // line_address "," line_address
+        // | line_address "," pattern
+        // | pattern "," line_address
+        // | pattern "," pattern
+        // | line_address
+        // | pattern
+        if let MyOption::Some(start_line_address) = self.line_address()? {
+            if self.accept(TokenType::Separator, ",") {
+                self.pop();
+                if let MyOption::Some(end_line_address) = self.line_address()? {
+                    return Ok(MyOption::Some(LineRange {
+                        start: start_line_address,
+                        end: end_line_address,
+                    }));
+                } else if let MyOption::Some(pattern) = self.pattern()? {
+                    let end_line_address =
+                        LineAddressType::Absolute(SimpleLineAddressType::Pattern(pattern));
+                    return Ok(MyOption::Some(LineRange {
+                        start: start_line_address,
+                        end: end_line_address,
+                    }));
+                }
+            } else {
+                return Ok(MyOption::Some(LineRange {
+                    start: start_line_address.clone(),
+                    end: start_line_address.clone(),
+                }));
+            }
+        } else if let MyOption::Some(pattern1) = self.pattern()? {
+            if self.accept(TokenType::Separator, ",") {
+                self.pop();
+                if let MyOption::Some(end_line_address) = self.line_address()? {
+                    return Ok(MyOption::Some(LineRange {
+                        start: LineAddressType::Absolute(SimpleLineAddressType::Pattern(pattern1)),
+                        end: end_line_address,
+                    }));
+                } else if let MyOption::Some(pattern2) = self.pattern()? {
+                    return Ok(MyOption::Some(LineRange {
+                        start: LineAddressType::Absolute(SimpleLineAddressType::Pattern(pattern1)),
+                        end: LineAddressType::Absolute(SimpleLineAddressType::Pattern(pattern2)),
+                    }));
+                }
+            } else {
+                return Ok(MyOption::Some(LineRange {
+                    start: LineAddressType::Absolute(SimpleLineAddressType::Pattern(
+                        pattern1.clone(),
+                    )),
+                    end: LineAddressType::Absolute(SimpleLineAddressType::Pattern(
+                        pattern1.clone(),
+                    )),
+                }));
+            }
+        }
+        Ok(MyOption::None)
+    }
+
+    fn line_address(&mut self) -> Result<MyOption<LineAddressType>, GenericError> {
+        // number, "$", "^", ".", "%"
+        if self.accept_type(TokenType::Number) {
+            if let MyOption::Some(token) = self.pop() {
+                let number = token.lexeme.clone();
+                println!("number {:?}", number);
+                return Ok(MyOption::Some(LineAddressType::Absolute(
+                    SimpleLineAddressType::LineNumber(number.parse().unwrap()),
+                )));
+            }
+        } else if self.accept(TokenType::Symbol, "$") {
+            self.pop();
+            return Ok(MyOption::Some(LineAddressType::Absolute(
+                SimpleLineAddressType::LastLine,
+            )));
+        } else if self.accept(TokenType::Symbol, "^") {
+            self.pop();
+            return Ok(MyOption::Some(LineAddressType::Absolute(
+                SimpleLineAddressType::FirstLine,
+            )));
+        } else if self.accept(TokenType::Symbol, ".") {
+            self.pop();
+            return Ok(MyOption::Some(LineAddressType::Absolute(
+                SimpleLineAddressType::CurrentLine,
+            )));
+        } else if self.accept(TokenType::Symbol, "%") {
+            self.pop();
+            return Ok(MyOption::Some(LineAddressType::Absolute(
+                SimpleLineAddressType::AllLines,
+            )));
+        }
+        Ok(MyOption::None)
+    }
+
+    fn pattern(&mut self) -> Result<MyOption<Pattern>, GenericError> {
+        if self.accept_type(TokenType::Pattern) {
+            if let MyOption::Some(token) = &self.token_opt {
+                let pattern = token.lexeme.clone();
+                return Ok(MyOption::Some(Pattern { pattern }));
+            }
+        }
+        Ok(MyOption::None)
+    }
+
+    fn substitute_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        Ok(MyOption::None)
     }
 
     fn simple_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
@@ -126,7 +269,7 @@ impl Parser {
     fn q_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         // tokens が "q" は Ok(Some(Box::new(ExitCommand {}))) を返す。
         if self.tokens.len() == 2 {
-            if self.tokens[0].token_type == lexer::TokenType::Command {
+            if self.tokens[0].token_type == TokenType::Command {
                 if self.tokens[0].lexeme == "q" {
                     return Ok(MyOption::Some(Box::new(exit::ExitCommand {})));
                 }
@@ -138,8 +281,8 @@ impl Parser {
     fn wq_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         // tokens が "w", "q" は Ok(Some(Box::new(ExitWithSaveCommand {}))) を返す。
         if self.tokens.len() == 3 {
-            if self.tokens[0].token_type == lexer::TokenType::Command
-                && self.tokens[1].token_type == lexer::TokenType::Command
+            if self.tokens[0].token_type == TokenType::Command
+                && self.tokens[1].token_type == TokenType::Command
             {
                 if self.tokens[0].lexeme == "w" && self.tokens[1].lexeme == "q" {
                     return Ok(MyOption::Some(Box::new(exit::ExitWithSaveCommand {})));
@@ -148,55 +291,6 @@ impl Parser {
         }
         Ok(MyOption::None)
     }
-
-    fn complex_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-        Ok(MyOption::None)
-    }
-
-    // fn complex_command(tokens: &Vec<lexer::Token>) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-    //     let command_opt =
-    //         display_command(tokens)? | substitute_command(tokens)?;
-    //     if let MyOption::Some(command) = command_opt {
-    //         return Ok(MyOption::Some(command));
-    //     }
-    //     Ok(MyOption::None)
-    // }
-
-    // fn display_command(tokens: &Vec<lexer::Token>) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-    //     let command_opt =
-    //         line_range(tokens)? & print_command(tokens)?;
-    //     if let MyOption::Some(command) = command_opt {
-    //         return Ok(MyOption::Some(command));
-    //     }
-    //     Ok(MyOption::None)
-    // }
-
-    // fn line_range(tokens: &Vec<lexer::Token>) -> Result<MyOption<LineRange>, GenericError> {
-    //     let result =
-    //         line_address(tokens)? & comma(tokens)? & line_address(tokens)?
-    //         | pattern(tokens)? & comma(tokens)? & line_address(tokens)?
-    //         | line_address(tokens)? & comma(tokens)? & pattern(tokens)?
-    //         | pattern(tokens)? & comma(tokens)? & pattern(tokens)?;
-    //         | line_address(tokens)?;
-    //     if let MyOption::Some(line_range) = result {
-    //         return Ok(MyOption::Some(line_range));
-    //     }
-    //     Ok(MyOption::None)
-    // }
-
-    // fn line_address(tokens: &Vec<lexer::Token>) -> Result<MyOption<LineAddressType>, GenericError> {
-    //     if tokens.len() == 1 {
-    //         if tokens[0].token_type == lexer::TokenType::Number {
-    //             let line_number = tokens[0].lexeme.parse::<usize>().unwrap();
-    //             return Ok(MyOption::Some(LineAddressType::Absolute(SimpleLineAddressType::LineNumber(line_number))));
-    //         }
-    //     }
-    //     Ok(MyOption::None)
-    // }
-
-    // fn substitute_command(tokens: &Vec<lexer::Token>) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-    //     Ok(MyOption::None)
-    // }
 }
 
 #[cfg(test)]
@@ -209,5 +303,29 @@ mod tests {
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();
         assert!(command.is::<exit::ExitWithSaveCommand>());
+    }
+
+    #[test]
+    fn test_parse_print_command() {
+        let input = "p";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<print::PrintCommand>());
+    }
+
+    #[test]
+    fn test_parse_print_with_line_address() {
+        let input = "1,2p";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<print::PrintCommand>());
+        let print_command = command.downcast_ref::<print::PrintCommand>().unwrap();
+        assert_eq!(
+            print_command.line_range,
+            LineRange {
+                start: LineAddressType::Absolute(SimpleLineAddressType::LineNumber(1)),
+                end: LineAddressType::Absolute(SimpleLineAddressType::LineNumber(2)),
+            }
+        );
     }
 }

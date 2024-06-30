@@ -2,32 +2,39 @@ use std::any::Any;
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::{editor::Editor, generic_error::GenericResult};
+use crate::{data::LineRange, editor::Editor, generic_error::GenericResult};
 
 pub trait Command {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()>;
+
     fn is_reusable(&self) -> bool {
         true
     }
+
     fn is_modeful(&self) -> bool {
         false
     }
+
     fn is_undoable(&self) -> bool {
         false
     }
+
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let _ = editor;
         // do nothing
         Ok(())
     }
+
     fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
         let _ = editor;
         // do nothing
         Ok(None)
     }
+
     fn set_text(&mut self, _text: String) {
         // do nothing
     }
+
     fn as_any(&self) -> &dyn Any;
 }
 

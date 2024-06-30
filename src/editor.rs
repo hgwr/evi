@@ -14,7 +14,7 @@ use crate::{buffer::Buffer, command::base::ExecutedCommand, generic_error::Gener
 use crate::{
     buffer::CursorPositionInBuffer,
     command::base::{Command, CommandData},
-    ex::parser::parse,
+    ex::parser::Parser,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -242,7 +242,8 @@ impl Editor {
 
     pub fn execute_ex_command(&mut self, ex_command_str: String) -> GenericResult<()> {
         let ex_command_str = ex_command_str.trim();
-        let result = parse(ex_command_str);
+        let mut parser = Parser::new(ex_command_str);
+        let result = parser.parse();
         if let Err(e) = result {
             info!("Error: {}", e.to_string());
             self.status_line = e.to_string();

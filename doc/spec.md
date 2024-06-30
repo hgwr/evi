@@ -143,14 +143,14 @@ TBD
 <complex_command> ::= <write_read_command> | <display_command> | <substitution_command> | <deletion_command> | <movement_command> | <copy_command> | <line_number_command> | <global_command> | <pattern_command>
 
 <write_read_command> ::= "r" <filename>
-<display_command> ::= <line_range> "p"
+<display_command> ::= [<line_range>] "p"
 <substitution_command> ::= <line_range> "s/" <pattern> "/" <replacement> ["/g"]
-<deletion_command> ::= <line_range> "d"
-<movement_command> ::= <line_range> "m" <line_address>
-<copy_command> ::= <line_range> "co" <line_address>
-<line_number_command> ::= <line_range> "#"
-<global_command> ::= "g/" <pattern> "/" <global_option>
-<pattern_command> ::= <line_range> "t" <line_address>
+<deletion_command> ::= [<line_range>] "d"
+<movement_command> ::= [<line_range>] "m" <line_address>
+<copy_command> ::= [<line_range>] "co" <line_address>
+<line_number_command> ::= [<line_range>] "#"
+<global_command> ::= [<line_range>] "g/" <pattern> "/" <global_option>
+<pattern_command> ::= [<line_range>]**** "t" <line_address>
 
 <line_range> ::= <line_address> | <line_address> "," <line_address> | "%" | <line_address> "," <pattern>
 <line_address> ::= <number> | "." | "$" | "-" | "+"

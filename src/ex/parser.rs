@@ -268,25 +268,21 @@ impl Parser {
 
     fn q_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         // tokens が "q" は Ok(Some(Box::new(ExitCommand {}))) を返す。
-        if self.tokens.len() == 2 {
-            if self.tokens[0].token_type == TokenType::Command {
-                if self.tokens[0].lexeme == "q" {
-                    return Ok(MyOption::Some(Box::new(exit::ExitCommand {})));
-                }
-            }
+        if self.accept(TokenType::Command, "q") {
+            self.pop();
+            return Ok(MyOption::Some(Box::new(exit::ExitCommand {})));
         }
+
         Ok(MyOption::None)
     }
 
     fn wq_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         // tokens が "w", "q" は Ok(Some(Box::new(ExitWithSaveCommand {}))) を返す。
-        if self.tokens.len() == 3 {
-            if self.tokens[0].token_type == TokenType::Command
-                && self.tokens[1].token_type == TokenType::Command
-            {
-                if self.tokens[0].lexeme == "w" && self.tokens[1].lexeme == "q" {
-                    return Ok(MyOption::Some(Box::new(exit::ExitWithSaveCommand {})));
-                }
+        if self.accept(TokenType::Command, "w") {
+            self.pop();
+            if self.accept(TokenType::Command, "q") {
+                self.pop();
+                return Ok(MyOption::Some(Box::new(exit::ExitWithSaveCommand {})));
             }
         }
         Ok(MyOption::None)
@@ -298,7 +294,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_simple_command() {
+    fn test_parse_q_command() {
+        let input = "q";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<exit::ExitCommand>());
+    }
+
+    #[test]
+    fn test_parse_wq_command() {
         let input = "wq";
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();

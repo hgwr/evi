@@ -259,7 +259,8 @@ impl Parser {
     }
 
     fn simple_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-        let command_opt = self.q_command()? | self.wq_command()?;
+        let command_opt =
+            self.q_command()? | self.wq_command()? | self.q_exclamation_command()?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
         }
@@ -267,7 +268,6 @@ impl Parser {
     }
 
     fn q_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-        // tokens が "q" は Ok(Some(Box::new(ExitCommand {}))) を返す。
         if self.accept(TokenType::Command, "q") {
             self.pop();
             return Ok(MyOption::Some(Box::new(exit::ExitCommand {})));
@@ -276,8 +276,18 @@ impl Parser {
         Ok(MyOption::None)
     }
 
+    fn q_exclamation_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "q") {
+            self.pop();
+            if self.accept(TokenType::Command, "!") {
+                self.pop();
+                return Ok(MyOption::Some(Box::new(exit::ExitWithoutSaveCommand {})));
+            }
+        }
+        Ok(MyOption::None)
+    }
+
     fn wq_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-        // tokens が "w", "q" は Ok(Some(Box::new(ExitWithSaveCommand {}))) を返す。
         if self.accept(TokenType::Command, "w") {
             self.pop();
             if self.accept(TokenType::Command, "q") {

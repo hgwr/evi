@@ -464,53 +464,6 @@ impl Editor {
         self.last_input_string.push('\n');
         Ok(())
     }
-
-    pub fn go_to_line(&mut self, line_address: &crate::data::LineAddressType) -> GenericResult<()> {
-        let line_number: isize = match line_address {
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::LineNumber(n)) => *n as isize,
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::CurrentLine) => {
-                self.cursor_position_in_buffer.row as isize
-            },
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::FirstLine) => 0,
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::LastLine) => {
-                self.buffer.lines.len() as isize
-            },
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::AllLines) => {
-                self.buffer.lines.len() as isize
-            },
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::Pattern(_)) => {
-                // TODO: Implement
-                unimplemented!()
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::FirstLine, i) => {
-                0 + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::LineNumber(n), i) => {
-                (*n as isize) + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::CurrentLine, i) => {
-                (self.cursor_position_in_buffer.row as isize) + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::LastLine, i) => {
-                (self.buffer.lines.len() as isize) + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
-                (self.buffer.lines.len() as isize) + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), i) => {
-                // TODO: Implement
-                unimplemented!()
-            },
-        };
-
-        log::info!("line_number: {}", line_number);
-        if line_number > 0 && (line_number as usize) <= self.buffer.lines.len() {
-            self.cursor_position_in_buffer.row = (line_number - 1) as usize;
-            self.cursor_position_in_buffer.col = 0;
-            // TODO: Implement
-        }
-        Ok(())
-    }
 }
 
 impl Drop for Editor {

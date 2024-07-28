@@ -11,8 +11,8 @@ pub struct GoToLineCommand {
 
 impl Command for GoToLineCommand {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
-        // TODO: Implement GoToLineCommand
         log::info!("GoToLineCommand execute");
+        editor.go_to_line(&self.line_address)?;
         Ok(())
     }
 

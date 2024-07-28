@@ -165,3 +165,50 @@ impl Command for Delete {
         self
     }
 }
+
+pub struct DeleteLines {
+    pub editor_cursor_data: Option<crate::editor::EditorCursorData>,
+    pub line_range: crate::data::LineRange,
+    pub text: Option<String>,
+}
+
+impl Command for DeleteLines {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        let start_address = self.line_range.start.clone();
+        let end_address = self.line_range.end.clone();
+        let start_row = editor.get_line_number_from(&start_address);
+        let end_row = editor.get_line_number_from(&end_address);
+
+        let start_cursor_data = crate::buffer::CursorPositionInBuffer {
+            row: start_row,
+            col: 0,
+        };
+        let end_cursor_data = crate::buffer::CursorPositionInBuffer {
+            row: end_row,
+            col: 0,
+        };
+
+        self.editor_cursor_data = Some(editor.snapshot_cursor_data());
+
+        if let Ok(deleted) = editor.buffer.delete(
+            start_cursor_data,
+            end_cursor_data,
+        ) {
+            self.text = Some(deleted);
+        }
+
+        Ok(())
+    }
+
+    fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        if let Some(text) = &self.text {
+            let row = editor.cursor_position_in_buffer.row;
+            editor.buffer.lines.insert(row, text.clone());
+        }
+        Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}

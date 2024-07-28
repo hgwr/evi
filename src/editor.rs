@@ -8,7 +8,7 @@ use crossterm::{
 
 use log::info;
 
-use crate::{command::factory::command_factory, data::SimpleLineAddressType};
+use crate::{command::factory::command_factory, data::{LineAddressType, SimpleLineAddressType}};
 use crate::render::render;
 use crate::{buffer::Buffer, command::base::ExecutedCommand, generic_error::GenericResult};
 use crate::{
@@ -463,6 +463,47 @@ impl Editor {
         self.cursor_position_on_screen.col = 0;
         self.last_input_string.push('\n');
         Ok(())
+    }
+
+    pub fn get_line_number_from(&mut self, line_address: &LineAddressType) -> usize {
+        let line_number: isize = match line_address {
+            crate::data::LineAddressType::Absolute(SimpleLineAddressType::LineNumber(n)) => *n as isize,
+            crate::data::LineAddressType::Absolute(SimpleLineAddressType::CurrentLine) => {
+                self.cursor_position_in_buffer.row as isize
+            },
+            crate::data::LineAddressType::Absolute(SimpleLineAddressType::FirstLine) => 0,
+            crate::data::LineAddressType::Absolute(SimpleLineAddressType::LastLine) => {
+                self.buffer.lines.len() as isize
+            },
+            crate::data::LineAddressType::Absolute(SimpleLineAddressType::AllLines) => {
+                self.buffer.lines.len() as isize
+            },
+            crate::data::LineAddressType::Absolute(SimpleLineAddressType::Pattern(_)) => {
+                // TODO: Implement
+                unimplemented!()
+            },
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::FirstLine, i) => {
+                0 + i
+            },
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::LineNumber(n), i) => {
+                (*n as isize) + i
+            },
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::CurrentLine, i) => {
+                (self.cursor_position_in_buffer.row as isize) + i
+            },
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::LastLine, i) => {
+                (self.buffer.lines.len() as isize) + i
+            },
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
+                (self.buffer.lines.len() as isize) + i
+            },
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), i) => {
+                // TODO: Implement
+                unimplemented!()
+            },
+        };
+
+        line_number as usize
     }
 }
 

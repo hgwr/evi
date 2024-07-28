@@ -13,42 +13,7 @@ pub struct GoToLineCommand {
 impl Command for GoToLineCommand {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         log::info!("GoToLineCommand execute");
-        let line_number: isize = match self.line_address {
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::LineNumber(n)) => n as isize,
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::CurrentLine) => {
-                editor.cursor_position_in_buffer.row as isize
-            },
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::FirstLine) => 0,
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::LastLine) => {
-                editor.buffer.lines.len() as isize
-            },
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::AllLines) => {
-                editor.buffer.lines.len() as isize
-            },
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::Pattern(_)) => {
-                // TODO: Implement
-                unimplemented!()
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::FirstLine, i) => {
-                0 + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::LineNumber(n), i) => {
-                (n as isize) + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::CurrentLine, i) => {
-                (editor.cursor_position_in_buffer.row as isize) + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::LastLine, i) => {
-                (editor.buffer.lines.len() as isize) + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
-                (editor.buffer.lines.len() as isize) + i
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), i) => {
-                // TODO: Implement
-                unimplemented!()
-            },
-        };
+        let line_number = editor.get_line_number_from(&self.line_address);
 
         log::info!("line_number: {}", line_number);
         editor.cursor_position_in_buffer.row = 0;

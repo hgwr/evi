@@ -1,6 +1,7 @@
 use std::ops::BitOr;
 
 use crate::command::base::Command;
+use crate::command::commands::delete;
 use crate::command::commands::go_to_line;
 use crate::data::LineAddressType;
 use crate::data::LineRange;
@@ -147,17 +148,31 @@ impl Parser {
                 end: LineAddressType::Absolute(SimpleLineAddressType::CurrentLine),
             }
         };
-        let command_opt = self.display_command(line_range)? | self.substitute_command()?;
+        let command_opt = self.display_command(&line_range)?
+            | self.substitute_command()?
+            | self.delete_command(&line_range)?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
         }
         Ok(MyOption::None)
     }
 
-    fn display_command(&mut self, line_range: LineRange) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+    fn delete_command(&mut self, line_range: &LineRange) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "d") {
+            let delete_command = delete::DeleteLines {
+                line_range: line_range.clone(),
+                editor_cursor_data: None,
+                text: None,
+            };
+            return Ok(MyOption::Some(Box::new(delete_command)));
+        }
+        Ok(MyOption::None)
+    }
+
+    fn display_command(&mut self, line_range: &LineRange) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         if self.accept(TokenType::Command, "p") {
             let print_command = print::PrintCommand {
-                line_range
+                line_range: line_range.clone()
             };
             return Ok(MyOption::Some(Box::new(print_command)));
         }

@@ -8,3 +8,4 @@ pub mod delete;
 pub mod undo;
 pub mod append;
 pub mod print;
+pub mod go_to_line;

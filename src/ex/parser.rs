@@ -1,6 +1,7 @@
 use std::ops::BitOr;
 
 use crate::command::base::Command;
+use crate::command::commands::go_to_line;
 use crate::data::LineAddressType;
 use crate::data::LineRange;
 use crate::data::Pattern;
@@ -41,6 +42,7 @@ impl BitOr for MyOption<Box<dyn Command>> {
 
 pub struct Parser {
     tokens: Vec<Token>,
+    original_tokens: Vec<Token>,
     token_opt: MyOption<Token>,
     stack: Vec<Token>,
     command_opt: MyOption<Box<dyn Command>>,
@@ -52,6 +54,7 @@ impl Parser {
         let tokens = lexer::tokenize(input);
         println!("tokens {:?}", tokens);
         Parser {
+            original_tokens: tokens.clone(),
             tokens,
             token_opt: MyOption::None,
             stack: Vec::new(),
@@ -93,6 +96,14 @@ impl Parser {
                 lexeme: "".to_string(),
             });
         }
+    }
+
+    fn undo_parse(&mut self) {
+        self.tokens = self.original_tokens.clone();
+        self.stack.clear();
+        self.command_opt = MyOption::None;
+        self.line_range_opt = MyOption::None;
+        self.get_symbol();
     }
 
     fn error(&self, message: &str) -> GenericError {
@@ -215,7 +226,6 @@ impl Parser {
         if self.accept_type(TokenType::Number) {
             if let MyOption::Some(token) = self.pop() {
                 let number = token.lexeme.clone();
-                println!("number {:?}", number);
                 return Ok(MyOption::Some(LineAddressType::Absolute(
                     SimpleLineAddressType::LineNumber(number.parse().unwrap()),
                 )));
@@ -260,10 +270,26 @@ impl Parser {
 
     fn simple_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         let command_opt =
-            self.q_command()? | self.wq_command()? | self.q_exclamation_command()?;
+            self.q_command()? | self.wq_command()? | self.q_exclamation_command()?
+            | self.go_to_line_command()?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
         }
+        Ok(MyOption::None)
+    }
+
+    fn go_to_line_command(&mut self)  -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        let line_address = self.line_address()?;
+        let end_of_input = self.accept_type(TokenType::EndOfInput);
+
+        if let MyOption::Some(line_address) = line_address {
+            if end_of_input {
+                return Ok(MyOption::Some(Box::new(go_to_line::GoToLineCommand { line_address })));
+            } else {
+                self.undo_parse();
+            }
+        }
+
         Ok(MyOption::None)
     }
 
@@ -317,6 +343,14 @@ mod tests {
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();
         assert!(command.is::<exit::ExitWithSaveCommand>());
+    }
+
+    #[test]
+    fn test_parse_go_to_line_command() {
+        let input = "1";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<go_to_line::GoToLineCommand>());
     }
 
     #[test]

@@ -517,3 +517,45 @@ impl Drop for Editor {
         stdout.flush().unwrap();
     }
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_editor_get_line_number_from_absolute() {
+        let mut editor = Editor::new();
+        editor.buffer.lines = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(0))),
+            0
+        );
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(1))),
+            1
+        );
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(2))),
+            2
+        );
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::CurrentLine)),
+            0
+        );
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::FirstLine)),
+            0
+        );
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LastLine)),
+            3
+        );
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::AllLines)),
+            3
+        );
+    }
+
+}

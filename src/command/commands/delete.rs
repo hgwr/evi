@@ -201,9 +201,13 @@ impl Command for DeleteLines {
     }
 
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
-        if let Some(text) = &self.text {
-            let row = editor.cursor_position_in_buffer.row;
-            editor.buffer.lines.insert(row, text.clone());
+        if let Some(editor_cursor_data) = &self.editor_cursor_data {
+            if let Some(text) = &self.text {
+                let row = editor_cursor_data.cursor_position_in_buffer.row;
+                let col = editor_cursor_data.cursor_position_in_buffer.col;
+                editor.buffer.insert(row, col, text)?;
+                editor.restore_cursor_data(*editor_cursor_data);
+            }
         }
         Ok(())
     }

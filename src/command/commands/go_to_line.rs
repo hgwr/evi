@@ -24,7 +24,7 @@ impl Command for GoToLineCommand {
         editor.window_position_in_buffer.col = 0;
         if line_number > 0 {
             let mut next_line = NextLine {};
-            for _ in 0..line_number - 1 {
+            for _ in 0..line_number {
                 next_line.execute(editor)?;
             }
         }

@@ -391,4 +391,20 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn test_parse_delete_line_with_address() {
+        let input = "1,3d";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<delete::DeleteLines>());
+        let delete_command = command.downcast_ref::<delete::DeleteLines>().unwrap();
+        assert_eq!(
+            delete_command.line_range,
+            LineRange {
+                start: LineAddressType::Absolute(SimpleLineAddressType::LineNumber(1)),
+                end: LineAddressType::Absolute(SimpleLineAddressType::LineNumber(3)),
+            }
+        );
+    }
 }

@@ -467,7 +467,14 @@ impl Editor {
 
     pub fn get_line_number_from(&mut self, line_address: &LineAddressType) -> usize {
         let line_number: isize = match line_address {
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::LineNumber(n)) => *n as isize,
+            crate::data::LineAddressType::Absolute(SimpleLineAddressType::LineNumber(n)) => {
+                let input = (*n as isize);
+                 if input == 0 {
+                     0
+                 } else {
+                     input - 1
+                 }
+            },
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::CurrentLine) => {
                 self.cursor_position_in_buffer.row as isize
             },
@@ -534,10 +541,14 @@ mod tests {
         );
         assert_eq!(
             editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(1))),
-            1
+            0
         );
         assert_eq!(
             editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(2))),
+            1
+        );
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(3))),
             2
         );
         assert_eq!(

@@ -189,6 +189,7 @@ impl Command for DeleteLines {
         };
 
         self.editor_cursor_data = Some(editor.snapshot_cursor_data());
+        self.editor_cursor_data.as_mut().unwrap().cursor_position_in_buffer = start_cursor_data;
 
         if let Ok(deleted) = editor.buffer.delete(
             start_cursor_data,

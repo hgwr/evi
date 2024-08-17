@@ -240,6 +240,18 @@ mod tests {
             .unwrap();
         assert_eq!(buffer.lines, vec!["aef".to_string(), "ghi".to_string()]);
         assert_eq!(deleted, "bc\nd");
+
+        buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string(), "ghi".to_string(), "jkl".to_string()],
+        };
+        let deleted = buffer
+            .delete(
+                CursorPositionInBuffer { row: 0, col: 0 },
+                CursorPositionInBuffer { row: 3, col: 0 },
+            )
+            .unwrap();
+        assert_eq!(buffer.lines, vec!["jkl".to_string()]);
+        assert_eq!(deleted, "abc\ndef\nghi\n");
     }
 
     #[test]

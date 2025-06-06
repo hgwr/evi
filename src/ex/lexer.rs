@@ -235,16 +235,18 @@ impl Lexer {
                     }
                 }
                 SubstitutionCommandState::Options => {
-                    if c == 'g' {
+                    if c == 'g' || c == 'i' {
                         lexeme.push(c);
-                        tokens.push(Token {
-                            token_type: TokenType::Option,
-                            lexeme,
-                        });
-                        lexeme = String::new();
-                        state = SubstitutionCommandState::End;
                     } else {
-                        break;
+                        if !lexeme.is_empty() {
+                            tokens.push(Token {
+                                token_type: TokenType::Option,
+                                lexeme,
+                            });
+                            lexeme = String::new();
+                        }
+                        self.rewind_char();
+                        state = SubstitutionCommandState::End;
                     }
                 }
                 SubstitutionCommandState::End => {
@@ -255,6 +257,12 @@ impl Lexer {
                 }
             }
             self.read_char();
+        }
+        if state == SubstitutionCommandState::Options && !lexeme.is_empty() {
+            tokens.push(Token {
+                token_type: TokenType::Option,
+                lexeme,
+            });
         }
         self.rewind_char();
         tokens
@@ -463,6 +471,66 @@ mod tests {
         assert_eq!(tokens[6].token_type, TokenType::Command);
         assert_eq!(tokens[6].lexeme, "p");
         assert_eq!(tokens[7].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_substitute_ignore_case() {
+        let input = "1,5s/^abc/cba/i";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 8, "tokens: {:?}", tokens);
+        assert_eq!(tokens[0].token_type, TokenType::Number);
+        assert_eq!(tokens[0].lexeme, "1");
+        assert_eq!(tokens[1].token_type, TokenType::Separator);
+        assert_eq!(tokens[1].lexeme, ",");
+        assert_eq!(tokens[2].token_type, TokenType::Number);
+        assert_eq!(tokens[2].lexeme, "5");
+        assert_eq!(tokens[3].token_type, TokenType::Command);
+        assert_eq!(tokens[3].lexeme, "s");
+        assert_eq!(tokens[4].token_type, TokenType::Pattern);
+        assert_eq!(tokens[4].lexeme, "^abc");
+        assert_eq!(tokens[5].token_type, TokenType::Replacement);
+        assert_eq!(tokens[5].lexeme, "cba");
+        assert_eq!(tokens[6].token_type, TokenType::Option);
+        assert_eq!(tokens[6].lexeme, "i");
+        assert_eq!(tokens[7].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_substitute_global_all_lines() {
+        let input = "%s/^abc/cba/g";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 6, "tokens: {:?}", tokens);
+        assert_eq!(tokens[0].token_type, TokenType::Symbol);
+        assert_eq!(tokens[0].lexeme, "%");
+        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].lexeme, "s");
+        assert_eq!(tokens[2].token_type, TokenType::Pattern);
+        assert_eq!(tokens[2].lexeme, "^abc");
+        assert_eq!(tokens[3].token_type, TokenType::Replacement);
+        assert_eq!(tokens[3].lexeme, "cba");
+        assert_eq!(tokens[4].token_type, TokenType::Option);
+        assert_eq!(tokens[4].lexeme, "g");
+        assert_eq!(tokens[5].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_substitute_line_range_last() {
+        let input = "1,$s/cde$/CDE/";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 7, "tokens: {:?}", tokens);
+        assert_eq!(tokens[0].token_type, TokenType::Number);
+        assert_eq!(tokens[0].lexeme, "1");
+        assert_eq!(tokens[1].token_type, TokenType::Separator);
+        assert_eq!(tokens[1].lexeme, ",");
+        assert_eq!(tokens[2].token_type, TokenType::Symbol);
+        assert_eq!(tokens[2].lexeme, "$");
+        assert_eq!(tokens[3].token_type, TokenType::Command);
+        assert_eq!(tokens[3].lexeme, "s");
+        assert_eq!(tokens[4].token_type, TokenType::Pattern);
+        assert_eq!(tokens[4].lexeme, "cde$");
+        assert_eq!(tokens[5].token_type, TokenType::Replacement);
+        assert_eq!(tokens[5].lexeme, "CDE");
+        assert_eq!(tokens[6].token_type, TokenType::EndOfInput);
     }
 
     #[test]

@@ -32,6 +32,10 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                         // ex command begin
                         editor.set_ex_command_mode();
                         editor.status_line = ":".to_string();
+                    } else if event_keys.len() == 0 && key_event.code == event::KeyCode::Char('/') {
+                        editor.set_search_mode(crate::editor::SearchDirection::Forward);
+                    } else if event_keys.len() == 0 && key_event.code == event::KeyCode::Char('?') {
+                        editor.set_search_mode(crate::editor::SearchDirection::Backward);
                     } else {
                         event_keys.push(key_event);
                         let input_state = compose(&event_keys);
@@ -71,6 +75,26 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                         }
                         _ => {
                             editor.append_ex_command(key_data);
+                        }
+                    }
+                } else if editor.is_search_mode() {
+                    let key_data: KeyData = key_event.into();
+                    match key_data {
+                        KeyData {
+                            key_code: event::KeyCode::Enter,
+                            ..
+                        } => {
+                            editor.execute_search_query()?;
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Esc,
+                            ..
+                        } => {
+                            editor.set_command_mode();
+                            editor.status_line = "".to_string();
+                        }
+                        _ => {
+                            editor.append_search_query(key_data);
                         }
                     }
                 } else if editor.is_insert_mode() {

@@ -8,13 +8,20 @@ use crossterm::{
 
 use log::info;
 
-use crate::{command::factory::command_factory, data::{LineAddressType, SimpleLineAddressType}};
 use crate::render::render;
-use crate::{buffer::Buffer, command::base::ExecutedCommand, generic_error::GenericResult};
+use crate::{
+    buffer::Buffer,
+    command::base::ExecutedCommand,
+    generic_error::{GenericError, GenericResult},
+};
 use crate::{
     buffer::CursorPositionInBuffer,
     command::base::{Command, CommandData},
     ex::parser::Parser,
+};
+use crate::{
+    command::factory::command_factory,
+    data::{LineAddressType, SimpleLineAddressType},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -47,6 +54,13 @@ pub enum Mode {
     Command,
     Insert,
     ExCommand,
+    Search(SearchDirection),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SearchDirection {
+    Forward,
+    Backward,
 }
 
 pub struct Editor {
@@ -64,6 +78,9 @@ pub struct Editor {
     pub command_history: Vec<Vec<ExecutedCommand>>,
     pub last_input_string: String,
     pub ex_command_data: String,
+    pub search_query: String,
+    pub last_search_pattern: Option<String>,
+    pub last_search_direction: Option<SearchDirection>,
 }
 
 impl Editor {
@@ -86,6 +103,9 @@ impl Editor {
             command_history: Vec::new(),
             last_input_string: "".to_string(),
             ex_command_data: "".to_string(),
+            search_query: String::new(),
+            last_search_pattern: None,
+            last_search_direction: None,
         }
     }
 
@@ -141,6 +161,11 @@ impl Editor {
                 self.mode = Mode::Command;
                 self.convert_repetitive_command_history_to_commands_history();
                 self.status_line = "".to_string();
+            }
+            Mode::Search(_) => {
+                self.mode = Mode::Command;
+                self.status_line = "".to_string();
+                self.search_query.clear();
             }
         }
     }
@@ -216,6 +241,12 @@ impl Editor {
                 self.last_input_string = "".to_string();
             }
             Mode::Insert => {}
+            Mode::Search(_) => {
+                self.mode = Mode::Insert;
+                self.status_line = "-- INSERT --".to_string();
+                self.last_input_string = String::new();
+                self.search_query.clear();
+            }
         }
     }
 
@@ -231,9 +262,22 @@ impl Editor {
         self.mode == Mode::ExCommand
     }
 
+    pub fn is_search_mode(&self) -> bool {
+        matches!(self.mode, Mode::Search(_))
+    }
+
     pub fn set_ex_command_mode(&mut self) {
         self.mode = Mode::ExCommand;
         self.status_line = ":".to_string();
+    }
+
+    pub fn set_search_mode(&mut self, direction: SearchDirection) {
+        self.mode = Mode::Search(direction);
+        self.search_query = String::new();
+        self.status_line = match direction {
+            SearchDirection::Forward => "/".to_string(),
+            SearchDirection::Backward => "?".to_string(),
+        };
     }
 
     pub fn get_ex_command_data(&self) -> String {
@@ -277,6 +321,31 @@ impl Editor {
         }
     }
 
+    pub fn append_search_query(&mut self, key_data: crate::command::compose::KeyData) {
+        if let crate::command::compose::KeyData {
+            key_code: crossterm::event::KeyCode::Char(c),
+            ..
+        } = key_data
+        {
+            self.search_query.push(c);
+            let prefix = match self.mode {
+                Mode::Search(SearchDirection::Forward) => "/",
+                Mode::Search(SearchDirection::Backward) => "?",
+                _ => "",
+            };
+            self.status_line = prefix.to_string() + &self.search_query.clone();
+        }
+    }
+
+    pub fn execute_search_query(&mut self) -> GenericResult<()> {
+        if let Mode::Search(direction) = self.mode {
+            let pattern = self.search_query.clone();
+            self.set_command_mode();
+            self.search(direction, &pattern)?;
+        }
+        Ok(())
+    }
+
     pub fn snapshot_cursor_data(&self) -> EditorCursorData {
         EditorCursorData {
             cursor_position_on_screen: self.cursor_position_on_screen,
@@ -289,6 +358,127 @@ impl Editor {
         self.cursor_position_on_screen = cursor_data.cursor_position_on_screen;
         self.cursor_position_in_buffer = cursor_data.cursor_position_in_buffer;
         self.window_position_in_buffer = cursor_data.window_position_in_buffer;
+    }
+
+    pub fn move_cursor_to(&mut self, row: usize, col: usize) -> GenericResult<()> {
+        self.cursor_position_in_buffer.row = 0;
+        self.cursor_position_in_buffer.col = 0;
+        self.cursor_position_on_screen.row = 0;
+        self.cursor_position_on_screen.col = 0;
+        self.window_position_in_buffer.row = 0;
+        self.window_position_in_buffer.col = 0;
+        let mut next_line = crate::command::commands::move_cursor::NextLine {};
+        for _ in 0..row {
+            next_line.execute(self)?;
+        }
+        let mut forward_char = crate::command::commands::move_cursor::ForwardChar {};
+        for _ in 0..col {
+            forward_char.execute(self)?;
+        }
+        Ok(())
+    }
+
+    fn char_to_byte_index(s: &str, idx: usize) -> usize {
+        s.char_indices()
+            .nth(idx)
+            .map(|(i, _)| i)
+            .unwrap_or_else(|| s.len())
+    }
+
+    fn find_next_match(
+        &self,
+        re: &regex::Regex,
+        direction: SearchDirection,
+    ) -> Option<CursorPositionInBuffer> {
+        let total_lines = self.buffer.lines.len();
+        let start_row = self.cursor_position_in_buffer.row;
+        let start_col = self.cursor_position_in_buffer.col;
+        match direction {
+            SearchDirection::Forward => {
+                let mut row = start_row;
+                let mut first = true;
+                loop {
+                    let line = &self.buffer.lines[row];
+                    let search_start = if first { start_col + 1 } else { 0 };
+                    let start_byte = Self::char_to_byte_index(line, search_start);
+                    if let Some(mat) = re.find(&line[start_byte..]) {
+                        let col = search_start
+                            + line[start_byte..start_byte + mat.start()].chars().count();
+                        return Some(CursorPositionInBuffer { row, col });
+                    }
+                    row = (row + 1) % total_lines;
+                    if row == start_row && !first {
+                        break;
+                    }
+                    first = false;
+                }
+                None
+            }
+            SearchDirection::Backward => {
+                let mut row = start_row;
+                let mut first = true;
+                loop {
+                    let line = &self.buffer.lines[row];
+                    let search_end = if first {
+                        start_col + 1
+                    } else {
+                        line.chars().count()
+                    };
+                    let end_byte = Self::char_to_byte_index(line, search_end);
+                    let slice = &line[..end_byte];
+                    let mut last = None;
+                    for mat in re.find_iter(slice) {
+                        last = Some(mat);
+                    }
+                    if let Some(mat) = last {
+                        let col = slice[..mat.start()].chars().count();
+                        return Some(CursorPositionInBuffer { row, col });
+                    }
+                    if row == 0 {
+                        row = total_lines - 1;
+                    } else {
+                        row -= 1;
+                    }
+                    if row == start_row && !first {
+                        break;
+                    }
+                    first = false;
+                }
+                None
+            }
+        }
+    }
+
+    pub fn search(&mut self, direction: SearchDirection, pattern: &str) -> GenericResult<()> {
+        use regex::Regex;
+        let re = Regex::new(pattern).map_err(|e| GenericError::from(e.to_string()))?;
+        if let Some(pos) = self.find_next_match(&re, direction) {
+            self.move_cursor_to(pos.row, pos.col)?;
+            self.last_search_pattern = Some(pattern.to_string());
+            self.last_search_direction = Some(direction);
+        } else {
+            self.display_visual_bell()?;
+        }
+        Ok(())
+    }
+
+    pub fn repeat_search(&mut self, same_direction: bool) -> GenericResult<()> {
+        if let Some(pattern) = self.last_search_pattern.clone() {
+            if let Some(dir) = self.last_search_direction {
+                let dir = if same_direction {
+                    dir
+                } else {
+                    match dir {
+                        SearchDirection::Forward => SearchDirection::Backward,
+                        SearchDirection::Backward => SearchDirection::Forward,
+                    }
+                };
+                self.search(dir, &pattern)?;
+            }
+        } else {
+            self.display_visual_bell()?;
+        }
+        Ok(())
     }
 
     pub fn execute_command(&mut self, command_data: CommandData) -> GenericResult<()> {
@@ -469,45 +659,43 @@ impl Editor {
         let line_number: isize = match line_address {
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::LineNumber(n)) => {
                 let input = (*n as isize);
-                 if input == 0 {
-                     0
-                 } else {
-                     input - 1
-                 }
-            },
+                if input == 0 {
+                    0
+                } else {
+                    input - 1
+                }
+            }
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::CurrentLine) => {
                 self.cursor_position_in_buffer.row as isize
-            },
+            }
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::FirstLine) => 0,
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::LastLine) => {
                 self.buffer.lines.len().saturating_sub(1) as isize
-            },
+            }
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::AllLines) => {
                 self.buffer.lines.len().saturating_sub(1) as isize
-            },
+            }
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::Pattern(_)) => {
                 // TODO: Implement
                 unimplemented!()
-            },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::FirstLine, i) => {
-                0 + i
-            },
+            }
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::FirstLine, i) => 0 + i,
             crate::data::LineAddressType::Relative(SimpleLineAddressType::LineNumber(n), i) => {
                 (*n as isize) + i
-            },
+            }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::CurrentLine, i) => {
                 (self.cursor_position_in_buffer.row as isize) + i
-            },
+            }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::LastLine, i) => {
                 (self.buffer.lines.len().saturating_sub(1) as isize) + i
-            },
+            }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
                 (self.buffer.lines.len().saturating_sub(1) as isize) + i
-            },
+            }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), i) => {
                 // TODO: Implement
                 unimplemented!()
-            },
+            }
         };
 
         line_number as usize
@@ -525,8 +713,6 @@ impl Drop for Editor {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -536,37 +722,72 @@ mod tests {
         let mut editor = Editor::new();
         editor.buffer.lines = vec!["a".to_string(), "b".to_string(), "c".to_string()];
         assert_eq!(
-            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(0))),
+            editor.get_line_number_from(&LineAddressType::Absolute(
+                SimpleLineAddressType::LineNumber(0)
+            )),
             0
         );
         assert_eq!(
-            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(1))),
+            editor.get_line_number_from(&LineAddressType::Absolute(
+                SimpleLineAddressType::LineNumber(1)
+            )),
             0
         );
         assert_eq!(
-            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(2))),
+            editor.get_line_number_from(&LineAddressType::Absolute(
+                SimpleLineAddressType::LineNumber(2)
+            )),
             1
         );
         assert_eq!(
-            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LineNumber(3))),
+            editor.get_line_number_from(&LineAddressType::Absolute(
+                SimpleLineAddressType::LineNumber(3)
+            )),
             2
         );
         assert_eq!(
-            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::CurrentLine)),
+            editor.get_line_number_from(&LineAddressType::Absolute(
+                SimpleLineAddressType::CurrentLine
+            )),
             0
         );
         assert_eq!(
-            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::FirstLine)),
+            editor
+                .get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::FirstLine)),
             0
         );
         assert_eq!(
-            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LastLine)),
+            editor
+                .get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LastLine)),
             2
         );
         assert_eq!(
-            editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::AllLines)),
+            editor
+                .get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::AllLines)),
             2
         );
     }
 
+    #[test]
+    fn test_search_forward_and_repeat() {
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["abc def abc".to_string()];
+        editor.search(SearchDirection::Forward, "abc").unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 8);
+        editor.repeat_search(true).unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 0);
+    }
+
+    #[test]
+    fn test_search_backward() {
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["abc def abc".to_string()];
+        editor.move_cursor_to(0, 10).unwrap();
+        editor.search(SearchDirection::Backward, "abc").unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 8);
+        editor.repeat_search(false).unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 0);
+    }
 }

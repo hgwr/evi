@@ -60,10 +60,7 @@ TBD
 `:p` Display the current line
 `:1,3p` Display lines 1 to 3
 `:1p` Display line 1
-
-`:1p` Display line 1
 `:1` Display line 1
-`:1,3p` Display lines 1 to 3
 `:1,3` Display lines 1 to 3
 
 ### Substitution

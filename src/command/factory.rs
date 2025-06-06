@@ -9,6 +9,7 @@ use super::commands::delete::{Delete, DeleteChar};
 use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
 use super::commands::search::RepeatSearch;
+use super::commands::open_line::OpenLine;
 use super::commands::undo::Undo;
 
 pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
@@ -87,6 +88,19 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('a'),
             ..
         } => Box::new(Append::default()),
+
+        // open line commands
+        CommandData {
+            key_code: KeyCode::Char('o'),
+            ..
+        } => Box::new(OpenLine::default()),
+        CommandData {
+            key_code: KeyCode::Char('O'),
+            ..
+        } => Box::new(OpenLine {
+            above: true,
+            ..Default::default()
+        }),
 
         // delete commands
         CommandData {

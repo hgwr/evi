@@ -59,7 +59,11 @@ impl Lexer {
     fn rewind_char(&mut self) {
         if self.position > 0 {
             self.position -= 1;
-            self.current_char = Some(self.input.chars().nth(self.position - 1).unwrap());
+            if self.position < self.input.chars().count() {
+                self.current_char = Some(self.input.chars().nth(self.position).unwrap());
+            } else {
+                self.current_char = None;
+            }
         }
     }
 
@@ -340,6 +344,18 @@ mod tests {
         assert_eq!(tokens[0].lexeme, ":");
         assert_eq!(tokens[1].token_type, TokenType::Command);
         assert_eq!(tokens[1].lexeme, "q");
+        assert_eq!(tokens[2].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_number_command() {
+        let input = "1p";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 3, "tokens: {:?}", tokens);
+        assert_eq!(tokens[0].token_type, TokenType::Number);
+        assert_eq!(tokens[0].lexeme, "1");
+        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].lexeme, "p");
         assert_eq!(tokens[2].token_type, TokenType::EndOfInput);
     }
 

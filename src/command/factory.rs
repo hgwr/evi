@@ -2,10 +2,11 @@ use crate::command::base::{Command, CommandData, JumpCommandData};
 use crate::command::commands::exit::ExitCommand;
 use crate::command::commands::move_cursor::*;
 use crate::command::commands::no_op_command::NoOpCommand;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers};
 
 use super::commands::append::Append;
 use super::commands::delete::{Delete, DeleteChar};
+use super::commands::change::{Change, RepeatLastCommand};
 use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
 use super::commands::search::RepeatSearch;
@@ -116,6 +117,38 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             jump_command_data_opt: range.clone(),
             ..Default::default()
         }),
+
+        CommandData {
+            key_code: KeyCode::Char('c'),
+            range,
+            ..
+        } => Box::new(Change {
+            delete: Delete {
+                jump_command_data_opt: range.clone(),
+                ..Default::default()
+            },
+            insert: Insert::default(),
+            line_wise: matches!(range, Some(JumpCommandData { key_code: KeyCode::Char('c'), .. })),
+        }),
+        CommandData {
+            key_code: KeyCode::Char('C'),
+            ..
+        } => Box::new(Change {
+            delete: Delete {
+                jump_command_data_opt: Some(JumpCommandData {
+                    count: 1,
+                    key_code: KeyCode::Char('$'),
+                    modifiers: KeyModifiers::NONE,
+                }),
+                ..Default::default()
+            },
+            insert: Insert::default(),
+            line_wise: false,
+        }),
+        CommandData {
+            key_code: KeyCode::Char('.'),
+            ..
+        } => Box::new(RepeatLastCommand {}),
 
         // undo command
         CommandData {

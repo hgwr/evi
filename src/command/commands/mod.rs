@@ -1,5 +1,6 @@
 pub mod append;
 pub mod delete;
+pub mod change;
 pub mod esc;
 pub mod exit;
 pub mod go_to_line;

@@ -537,6 +537,28 @@ impl Editor {
         }
     }
 
+    pub fn repeat_last_command(&mut self) -> GenericResult<()> {
+        if let Some(mut last_chunk) = self.command_history.pop() {
+            let mut new_chunk: Vec<ExecutedCommand> = Vec::new();
+            for executed_command in last_chunk.iter_mut() {
+                let command_data = executed_command.command_data;
+                for _ in 0..command_data.count {
+                    let redo_result = executed_command.command.redo(self)?;
+                    if let Some(cmd) = redo_result {
+                        new_chunk.push(ExecutedCommand { command_data, command: cmd });
+                    }
+                }
+            }
+            self.command_history.push(last_chunk);
+            if !new_chunk.is_empty() {
+                self.command_history.push(new_chunk);
+            }
+        } else {
+            self.display_visual_bell()?;
+        }
+        Ok(())
+    }
+
     pub fn render(self: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResult<()> {
         render(self, stdout)
     }
@@ -716,6 +738,7 @@ impl Drop for Editor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::command::base::JumpCommandData;
 
     #[test]
     fn test_editor_get_line_number_from_absolute() {
@@ -789,5 +812,64 @@ mod tests {
         assert_eq!(editor.cursor_position_in_buffer.col, 8);
         editor.repeat_search(false).unwrap();
         assert_eq!(editor.cursor_position_in_buffer.col, 0);
+    }
+
+    #[test]
+    fn test_cw_and_repeat() {
+        use crossterm::event::{KeyCode, KeyModifiers};
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["hello world".to_string()];
+        let command_data = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('c'),
+            modifiers: KeyModifiers::NONE,
+            range: Some(JumpCommandData {
+                count: 1,
+                key_code: KeyCode::Char('w'),
+                modifiers: KeyModifiers::NONE,
+            }),
+        };
+        editor.execute_command(command_data).unwrap();
+        assert!(editor.is_insert_mode());
+        editor.insert_char('H').unwrap();
+        editor.insert_char('i').unwrap();
+        editor.set_command_mode();
+        assert_eq!(editor.buffer.lines[0], "Hiworld");
+        editor.move_cursor_to(0, 2).unwrap();
+        let repeat = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('.'),
+            modifiers: KeyModifiers::NONE,
+            range: None,
+        };
+        editor.execute_command(repeat).unwrap();
+        assert!(editor.buffer.lines[0].starts_with("Hi"));
+    }
+
+    #[test]
+    fn test_cc() {
+        use crossterm::event::{KeyCode, KeyModifiers};
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["hello".to_string(), "world".to_string()];
+        let command_data = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('c'),
+            modifiers: KeyModifiers::NONE,
+            range: Some(JumpCommandData {
+                count: 1,
+                key_code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::NONE,
+            }),
+        };
+        editor.execute_command(command_data).unwrap();
+        editor.insert_char('f').unwrap();
+        editor.insert_char('o').unwrap();
+        editor.insert_char('o').unwrap();
+        editor.set_command_mode();
+        assert_eq!(editor.buffer.lines, vec!["foo".to_string(), "world".to_string()]);
+        editor.undo().unwrap();
+        assert_eq!(editor.buffer.lines, vec!["hello".to_string(), "world".to_string()]);
     }
 }

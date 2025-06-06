@@ -158,6 +158,41 @@ impl Buffer {
             Ok(deleted_chars)
         }
     }
+
+    pub fn yank(
+        &self,
+        mut start: CursorPositionInBuffer,
+        mut end: CursorPositionInBuffer,
+    ) -> GenericResult<String> {
+        if start.cmp(&end) == std::cmp::Ordering::Greater {
+            let tmp = start;
+            start = end;
+            end = tmp;
+        }
+        if start.row == end.row {
+            let line = &self.lines[start.row];
+            let yanked: String = line
+                .chars()
+                .skip(start.col)
+                .take(end.col - start.col)
+                .collect();
+            Ok(yanked)
+        } else {
+            let first_line = self.lines[start.row].clone();
+            let last_line = self.lines[end.row].clone();
+            let first_part: String = first_line.chars().skip(start.col).collect();
+            let last_part: String = last_line.chars().take(end.col).collect();
+            let mut yanked_chars = first_part;
+            for i in 0..end.row - start.row {
+                yanked_chars.push('\n');
+                if i < end.row - start.row - 1 {
+                    yanked_chars.push_str(&self.lines[start.row + 1 + i]);
+                }
+            }
+            yanked_chars.push_str(&last_part);
+            Ok(yanked_chars)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -267,5 +302,30 @@ mod tests {
         };
         buffer.insert(0, 1, "x\ny").unwrap();
         assert_eq!(buffer.lines, vec!["ax".to_string(), "ybc".to_string(), "def".to_string()]);
+    }
+
+    #[test]
+    fn test_yank() {
+        let buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string()],
+        };
+        let text = buffer
+            .yank(
+                CursorPositionInBuffer { row: 0, col: 1 },
+                CursorPositionInBuffer { row: 0, col: 3 },
+            )
+            .unwrap();
+        assert_eq!(text, "bc");
+
+        let buffer = Buffer {
+            lines: vec!["abc".to_string(), "def".to_string(), "ghi".to_string()],
+        };
+        let text = buffer
+            .yank(
+                CursorPositionInBuffer { row: 0, col: 1 },
+                CursorPositionInBuffer { row: 1, col: 2 },
+            )
+            .unwrap();
+        assert_eq!(text, "bc\nde");
     }
 }

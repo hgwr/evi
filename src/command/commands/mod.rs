@@ -7,6 +7,7 @@ pub mod insert;
 pub mod misc;
 pub mod move_cursor;
 pub mod no_op_command;
+pub mod open_line;
 pub mod print;
 pub mod substitute;
 pub mod undo;

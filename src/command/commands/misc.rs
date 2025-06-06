@@ -46,7 +46,7 @@ mod tests {
         let mut editor = Editor::new();
         let mut cmd = DisplayFile;
         cmd.execute(&mut editor).unwrap();
-        assert_eq!(editor.status_line, "\"No Name\" --No lines in buffer--");
+        assert_eq!(editor.status_line, "\"No Name\" -- No lines in buffer --");
     }
 
     #[test]

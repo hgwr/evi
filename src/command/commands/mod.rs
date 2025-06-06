@@ -9,6 +9,7 @@ pub mod move_cursor;
 pub mod no_op_command;
 pub mod open_line;
 pub mod print;
+pub mod search;
 pub mod substitute;
 pub mod undo;
 pub mod write;

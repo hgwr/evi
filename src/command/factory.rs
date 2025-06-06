@@ -8,6 +8,7 @@ use super::commands::append::Append;
 use super::commands::delete::{Delete, DeleteChar};
 use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
+use super::commands::search::RepeatSearch;
 use super::commands::open_line::OpenLine;
 use super::commands::undo::Undo;
 
@@ -63,6 +64,18 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('b'),
             ..
         } => Box::new(BackwardWord {}),
+        CommandData {
+            key_code: KeyCode::Char('n'),
+            ..
+        } => Box::new(RepeatSearch {
+            same_direction: true,
+        }),
+        CommandData {
+            key_code: KeyCode::Char('N'),
+            ..
+        } => Box::new(RepeatSearch {
+            same_direction: false,
+        }),
 
         // insert commands
         CommandData {

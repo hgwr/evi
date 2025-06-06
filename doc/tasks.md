@@ -2,17 +2,14 @@
 
 The following tasks outline key feature work required to progress toward a POSIX-compliant vi clone. Each item references missing functionality listed in [doc/todo.md](todo.md).
 
-## 1. Implement open-line commands (`o`, `O`)
-- Allow inserting a new line below (`o`) or above (`O`) the current line while in command mode.
-- Update editing state so that the cursor moves to the new line and enters insert mode.
-- Ensure undo history and repeat (`.`) work correctly with these commands.
+## 1. Implement change commands (`c`, `cc`, `cw`, `C`)
+- Allow replacing text using motions or linewise variants.
+- Support repeating changes with `.` and include undo history.
 
-## 2. Implement search motions (`/`, `?`, `n`, `N`)
-- Support forward (`/`) and backward (`?`) pattern searches.
-- Implement repeat search commands `n` (same direction) and `N` (opposite direction).
-- Integrate search highlights and navigation with existing movement commands.
+## 2. Add yank and paste operations (`y`, `yy`, `yw`, `p`, `P`)
+- Enable copying text to the unnamed buffer and pasting it elsewhere.
+- Handle both linewise and characterwise cases consistent with vi.
 
-## 3. Implement write command (`:w` and `:w!`)
-- Add ability to save the current buffer to a file with `:w`.
-- Implement `:w!` to force overwriting read-only or existing files when permitted.
-- Provide error handling and messages consistent with classic vi behavior.
+## 3. Implement ex `:x` command
+- Save the current buffer if modified and then exit.
+- Provide error handling consistent with classic vi for unsaved changes.

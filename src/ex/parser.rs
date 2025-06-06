@@ -204,6 +204,14 @@ impl Parser {
                     }));
                 }
             } else {
+                if start_line_address
+                    == LineAddressType::Absolute(SimpleLineAddressType::AllLines)
+                {
+                    return Ok(MyOption::Some(LineRange {
+                        start: LineAddressType::Absolute(SimpleLineAddressType::FirstLine),
+                        end: LineAddressType::Absolute(SimpleLineAddressType::LastLine),
+                    }));
+                }
                 return Ok(MyOption::Some(LineRange {
                     start: start_line_address.clone(),
                     end: start_line_address.clone(),
@@ -477,5 +485,45 @@ mod tests {
         assert_eq!(sub.replacement, "cba");
         assert!(sub.ignore_case);
         assert!(!sub.global);
+    }
+
+    #[test]
+    fn test_parse_substitute_global_all_lines() {
+        let input = "%s/^abc/cba/g";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<substitute::SubstituteCommand>());
+        let sub = command.downcast_ref::<substitute::SubstituteCommand>().unwrap();
+        assert_eq!(
+            sub.line_range,
+            LineRange {
+                start: LineAddressType::Absolute(SimpleLineAddressType::FirstLine),
+                end: LineAddressType::Absolute(SimpleLineAddressType::LastLine),
+            }
+        );
+        assert_eq!(sub.pattern, "^abc");
+        assert_eq!(sub.replacement, "cba");
+        assert!(sub.global);
+        assert!(!sub.ignore_case);
+    }
+
+    #[test]
+    fn test_parse_substitute_line_range_last() {
+        let input = "1,$s/cde$/CDE/";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<substitute::SubstituteCommand>());
+        let sub = command.downcast_ref::<substitute::SubstituteCommand>().unwrap();
+        assert_eq!(
+            sub.line_range,
+            LineRange {
+                start: LineAddressType::Absolute(SimpleLineAddressType::LineNumber(1)),
+                end: LineAddressType::Absolute(SimpleLineAddressType::LastLine),
+            }
+        );
+        assert_eq!(sub.pattern, "cde$");
+        assert_eq!(sub.replacement, "CDE");
+        assert!(!sub.global);
+        assert!(!sub.ignore_case);
     }
 }

@@ -352,11 +352,12 @@ impl Parser {
     }
 
     fn simple_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-        let command_opt = self.q_command()?
-            | self.wq_command()?
-            | self.q_exclamation_command()?
-            | self.w_exclamation_command()?
+        let command_opt = self.q_command()? 
+            | self.wq_command()? 
+            | self.q_exclamation_command()? 
+            | self.w_exclamation_command()? 
             | self.w_command()?
+            | self.x_command()?
             | self.go_to_line_command()?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
@@ -446,6 +447,18 @@ impl Parser {
         }
         Ok(MyOption::None)
     }
+
+    fn x_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "x") {
+            self.pop();
+            if self.accept_type(TokenType::EndOfInput) {
+                return Ok(MyOption::Some(Box::new(exit::ExitCommand {})));
+            } else {
+                self.undo_parse();
+            }
+        }
+        Ok(MyOption::None)
+    }
 }
 
 #[cfg(test)]
@@ -466,6 +479,14 @@ mod tests {
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();
         assert!(command.is::<exit::ExitWithSaveCommand>());
+    }
+
+    #[test]
+    fn test_parse_x_command() {
+        let input = "x";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<exit::ExitCommand>());
     }
 
     #[test]

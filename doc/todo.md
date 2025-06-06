@@ -23,7 +23,7 @@ The ex commands described in `doc/spec.md` but not yet implemented include:
 
 - `:w` and `:w!` – write buffer to file (with or without force)
 - `:e!` – reload file discarding changes
-- `:x` – write if modified and exit
+- ~~`:x` – write if modified and exit~~
 - `:r {file}` – read another file into the buffer
 - `:m` and `:co` – move or copy lines
 - `:set number`, `:set nonumber`, `:set nu`, `:set nonu`

@@ -3,6 +3,7 @@ use std::ops::BitOr;
 use crate::command::base::Command;
 use crate::command::commands::delete;
 use crate::command::commands::go_to_line;
+use crate::command::commands::substitute;
 use crate::data::LineAddressType;
 use crate::data::LineRange;
 use crate::data::Pattern;
@@ -149,7 +150,7 @@ impl Parser {
             }
         };
         let command_opt = self.display_command(&line_range)?
-            | self.substitute_command()?
+            | self.substitute_command(&line_range)?
             | self.delete_command(&line_range)?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
@@ -279,7 +280,57 @@ impl Parser {
         Ok(MyOption::None)
     }
 
-    fn substitute_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+    fn substitute_command(&mut self, line_range: &LineRange) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "s") {
+            self.pop();
+
+            let pattern = if self.accept_type(TokenType::Pattern) {
+                if let MyOption::Some(token) = self.pop() {
+                    token.lexeme
+                } else {
+                    String::new()
+                }
+            } else {
+                return Err(self.error("pattern expected"));
+            };
+
+            let replacement = if self.accept_type(TokenType::Replacement) {
+                if let MyOption::Some(token) = self.pop() {
+                    token.lexeme
+                } else {
+                    String::new()
+                }
+            } else {
+                return Err(self.error("replacement expected"));
+            };
+
+            let mut options = String::new();
+            if self.accept_type(TokenType::Option) {
+                if let MyOption::Some(token) = self.pop() {
+                    options = token.lexeme;
+                }
+            }
+
+            let mut global = false;
+            let mut ignore_case = false;
+            for ch in options.chars() {
+                match ch {
+                    'g' => global = true,
+                    'i' => ignore_case = true,
+                    _ => {}
+                }
+            }
+
+            let command = substitute::SubstituteCommand {
+                line_range: line_range.clone(),
+                pattern,
+                replacement,
+                global,
+                ignore_case,
+            };
+            return Ok(MyOption::Some(Box::new(command)));
+        }
+
         Ok(MyOption::None)
     }
 
@@ -406,5 +457,25 @@ mod tests {
                 end: LineAddressType::Absolute(SimpleLineAddressType::LineNumber(3)),
             }
         );
+    }
+
+    #[test]
+    fn test_parse_substitute_ignore_case() {
+        let input = "1,5s/^abc/cba/i";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<substitute::SubstituteCommand>());
+        let sub = command.downcast_ref::<substitute::SubstituteCommand>().unwrap();
+        assert_eq!(
+            sub.line_range,
+            LineRange {
+                start: LineAddressType::Absolute(SimpleLineAddressType::LineNumber(1)),
+                end: LineAddressType::Absolute(SimpleLineAddressType::LineNumber(5)),
+            }
+        );
+        assert_eq!(sub.pattern, "^abc");
+        assert_eq!(sub.replacement, "cba");
+        assert!(sub.ignore_case);
+        assert!(!sub.global);
     }
 }

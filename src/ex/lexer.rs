@@ -59,7 +59,7 @@ impl Lexer {
     fn rewind_char(&mut self) {
         if self.position > 0 {
             self.position -= 1;
-            if self.position < self.input.len() {
+            if self.position < self.input.chars().count() {
                 self.current_char = Some(self.input.chars().nth(self.position).unwrap());
             } else {
                 self.current_char = None;

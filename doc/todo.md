@@ -4,7 +4,7 @@ This document lists vi and ex commands from the POSIX vi specification that are 
 
 ## Unimplemented vi commands
 
-- `o`, `O` – open a new line below/above the current line
+- ~~`o`, `O` – open a new line below/above the current line~~
 - `I`, `A` – insert/append at the beginning/end of line
 - `c`, `cc`, `cw`, `C` – change commands
 - `y`, `yy`, `yw` – yank operations
@@ -13,7 +13,6 @@ This document lists vi and ex commands from the POSIX vi specification that are 
 - `J` – join lines
 - `/`, `?`, `n`, `N` – search motions
 - `f`, `F`, `t`, `T` – find character on the current line
-- `o`/`O` – open new line in command mode
 - Visual mode commands such as `v`, `V`
 - Marks (`m`{char}) and jumps (`'{char}`)
 - Macros (`@`{register})

@@ -480,10 +480,10 @@ impl Editor {
             },
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::FirstLine) => 0,
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::LastLine) => {
-                self.buffer.lines.len() as isize
+                self.buffer.lines.len().saturating_sub(1) as isize
             },
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::AllLines) => {
-                self.buffer.lines.len() as isize
+                self.buffer.lines.len().saturating_sub(1) as isize
             },
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::Pattern(_)) => {
                 // TODO: Implement
@@ -499,10 +499,10 @@ impl Editor {
                 (self.cursor_position_in_buffer.row as isize) + i
             },
             crate::data::LineAddressType::Relative(SimpleLineAddressType::LastLine, i) => {
-                (self.buffer.lines.len() as isize) + i
+                (self.buffer.lines.len().saturating_sub(1) as isize) + i
             },
             crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
-                (self.buffer.lines.len() as isize) + i
+                (self.buffer.lines.len().saturating_sub(1) as isize) + i
             },
             crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), i) => {
                 // TODO: Implement
@@ -561,11 +561,11 @@ mod tests {
         );
         assert_eq!(
             editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::LastLine)),
-            3
+            2
         );
         assert_eq!(
             editor.get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::AllLines)),
-            3
+            2
         );
     }
 

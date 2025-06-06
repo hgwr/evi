@@ -150,7 +150,7 @@ TBD
 <copy_command> ::= [<line_range>] "co" <line_address>
 <line_number_command> ::= [<line_range>] "#"
 <global_command> ::= [<line_range>] "g/" <pattern> "/" <global_option>
-<pattern_command> ::= [<line_range>]**** "t" <line_address>
+<pattern_command> ::= [<line_range>] "t" <line_address>
 
 <line_range> ::= <line_address> | <line_address> "," <line_address> | "%" | <line_address> "," <pattern>
 <line_address> ::= <number> | "." | "$" | "-" | "+"

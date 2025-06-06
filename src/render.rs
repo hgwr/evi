@@ -2,10 +2,11 @@ use std::io::Write;
 
 use crossterm::{
     cursor,
-    style::{self},
+    style::{self, Attribute},
     terminal, QueueableCommand,
 };
 use log::info;
+use regex::Regex;
 
 use crate::{
     editor::{Editor, TerminalSize},
@@ -25,11 +26,32 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
     };
     let start_row: usize = editor.window_position_in_buffer.row;
     let lines = &editor.buffer.lines;
+    let highlight_re = editor
+        .last_search_pattern
+        .as_ref()
+        .and_then(|p| regex::Regex::new(p).ok());
     for line in &lines[start_row..] {
-        for c in line.chars() {
-            // check if c is double width character
+        let mut highlight: Vec<bool> = vec![false; line.chars().count()];
+        if let Some(re) = &highlight_re {
+            for mat in re.find_iter(line) {
+                let start = line[..mat.start()].chars().count();
+                let end = start + line[mat.start()..mat.end()].chars().count();
+                for i in start..end {
+                    if i < highlight.len() {
+                        highlight[i] = true;
+                    }
+                }
+            }
+        }
+        for (idx, c) in line.chars().enumerate() {
+            if highlight.get(idx) == Some(&true) {
+                stdout.queue(style::SetAttribute(style::Attribute::Reverse))?;
+            }
             let char_width = get_char_width(c);
             stdout.queue(style::Print(c))?;
+            if highlight.get(idx) == Some(&true) {
+                stdout.queue(style::SetAttribute(style::Attribute::Reset))?;
+            }
             cursor_position_on_writing.width += char_width as u16;
             if cursor_position_on_writing.width >= editor.terminal_size.width {
                 cursor_position_on_writing.width = 0;

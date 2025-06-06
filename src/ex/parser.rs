@@ -15,6 +15,7 @@ use crate::generic_error::GenericError;
 
 use crate::command::commands::exit;
 use crate::command::commands::print;
+use crate::command::commands::write;
 
 enum MyOption<T> {
     Some(T),
@@ -158,7 +159,10 @@ impl Parser {
         Ok(MyOption::None)
     }
 
-    fn delete_command(&mut self, line_range: &LineRange) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+    fn delete_command(
+        &mut self,
+        line_range: &LineRange,
+    ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         if self.accept(TokenType::Command, "d") {
             let delete_command = delete::DeleteLines {
                 line_range: line_range.clone(),
@@ -170,10 +174,13 @@ impl Parser {
         Ok(MyOption::None)
     }
 
-    fn display_command(&mut self, line_range: &LineRange) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+    fn display_command(
+        &mut self,
+        line_range: &LineRange,
+    ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         if self.accept(TokenType::Command, "p") {
             let print_command = print::PrintCommand {
-                line_range: line_range.clone()
+                line_range: line_range.clone(),
             };
             return Ok(MyOption::Some(Box::new(print_command)));
         }
@@ -204,8 +211,7 @@ impl Parser {
                     }));
                 }
             } else {
-                if start_line_address
-                    == LineAddressType::Absolute(SimpleLineAddressType::AllLines)
+                if start_line_address == LineAddressType::Absolute(SimpleLineAddressType::AllLines)
                 {
                     return Ok(MyOption::Some(LineRange {
                         start: LineAddressType::Absolute(SimpleLineAddressType::FirstLine),
@@ -288,7 +294,10 @@ impl Parser {
         Ok(MyOption::None)
     }
 
-    fn substitute_command(&mut self, line_range: &LineRange) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+    fn substitute_command(
+        &mut self,
+        line_range: &LineRange,
+    ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         if self.accept(TokenType::Command, "s") {
             self.pop();
 
@@ -343,8 +352,11 @@ impl Parser {
     }
 
     fn simple_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-        let command_opt =
-            self.q_command()? | self.wq_command()? | self.q_exclamation_command()?
+        let command_opt = self.q_command()?
+            | self.wq_command()?
+            | self.q_exclamation_command()?
+            | self.w_exclamation_command()?
+            | self.w_command()?
             | self.go_to_line_command()?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
@@ -352,13 +364,15 @@ impl Parser {
         Ok(MyOption::None)
     }
 
-    fn go_to_line_command(&mut self)  -> Result<MyOption<Box<dyn Command>>, GenericError> {
+    fn go_to_line_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         let line_address = self.line_address()?;
         let end_of_input = self.accept_type(TokenType::EndOfInput);
 
         if let MyOption::Some(line_address) = line_address {
             if end_of_input {
-                return Ok(MyOption::Some(Box::new(go_to_line::GoToLineCommand { line_address })));
+                return Ok(MyOption::Some(Box::new(go_to_line::GoToLineCommand {
+                    line_address,
+                })));
             } else {
                 self.undo_parse();
             }
@@ -393,6 +407,41 @@ impl Parser {
             if self.accept(TokenType::Command, "q") {
                 self.pop();
                 return Ok(MyOption::Some(Box::new(exit::ExitWithSaveCommand {})));
+            } else {
+                self.undo_parse();
+            }
+        }
+        Ok(MyOption::None)
+    }
+
+    fn w_exclamation_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "w") {
+            self.pop();
+            if self.accept(TokenType::Command, "!") || self.accept(TokenType::Symbol, "!") {
+                self.pop();
+                if self.accept_type(TokenType::EndOfInput) {
+                    return Ok(MyOption::Some(Box::new(write::WriteCommand {
+                        force: true,
+                    })));
+                } else {
+                    self.undo_parse();
+                }
+            } else {
+                self.undo_parse();
+            }
+        }
+        Ok(MyOption::None)
+    }
+
+    fn w_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "w") {
+            self.pop();
+            if self.accept_type(TokenType::EndOfInput) {
+                return Ok(MyOption::Some(Box::new(write::WriteCommand {
+                    force: false,
+                })));
+            } else {
+                self.undo_parse();
             }
         }
         Ok(MyOption::None)
@@ -417,6 +466,26 @@ mod tests {
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();
         assert!(command.is::<exit::ExitWithSaveCommand>());
+    }
+
+    #[test]
+    fn test_parse_write_command() {
+        let input = "w";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<write::WriteCommand>());
+        let cmd = command.downcast_ref::<write::WriteCommand>().unwrap();
+        assert!(!cmd.force);
+    }
+
+    #[test]
+    fn test_parse_write_force_command() {
+        let input = "w!";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<write::WriteCommand>());
+        let cmd = command.downcast_ref::<write::WriteCommand>().unwrap();
+        assert!(cmd.force);
     }
 
     #[test]
@@ -473,7 +542,9 @@ mod tests {
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();
         assert!(command.is::<substitute::SubstituteCommand>());
-        let sub = command.downcast_ref::<substitute::SubstituteCommand>().unwrap();
+        let sub = command
+            .downcast_ref::<substitute::SubstituteCommand>()
+            .unwrap();
         assert_eq!(
             sub.line_range,
             LineRange {
@@ -493,7 +564,9 @@ mod tests {
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();
         assert!(command.is::<substitute::SubstituteCommand>());
-        let sub = command.downcast_ref::<substitute::SubstituteCommand>().unwrap();
+        let sub = command
+            .downcast_ref::<substitute::SubstituteCommand>()
+            .unwrap();
         assert_eq!(
             sub.line_range,
             LineRange {
@@ -513,7 +586,9 @@ mod tests {
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();
         assert!(command.is::<substitute::SubstituteCommand>());
-        let sub = command.downcast_ref::<substitute::SubstituteCommand>().unwrap();
+        let sub = command
+            .downcast_ref::<substitute::SubstituteCommand>()
+            .unwrap();
         assert_eq!(
             sub.line_range,
             LineRange {

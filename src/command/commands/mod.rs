@@ -11,3 +11,4 @@ pub mod open_line;
 pub mod print;
 pub mod substitute;
 pub mod undo;
+pub mod write;

@@ -36,7 +36,21 @@ evi is a vi clone editor written in Rust. It is a simple and lightweight text ed
 
 ## vi commands
 
-TBD
+The following commands are currently implemented:
+
+- `h`, `j`, `k`, `l` — move the cursor left, down, up and right
+- `0`, `$` — jump to the beginning or end of the current line
+- `w`, `b` — move forward or backward by word
+- `i` — insert text before the cursor
+- `a` — append text after the cursor
+- `x` — delete the character under the cursor
+- `d{motion}` — delete text specified by a motion
+- `u` — undo the last change
+- `Ctrl-g` — display file information
+- `ZZ` — write the file if modified and exit
+- `:` — enter ex command mode
+
+All other POSIX vi commands are not yet implemented.
 
 ## ex commands
 

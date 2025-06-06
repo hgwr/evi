@@ -12,7 +12,7 @@ impl Command for DisplayFile {
         let file_name = editor.current_file_name().unwrap_or("No Name".to_string());
 
         if editor.buffer.lines.is_empty() {
-            editor.status_line = format!("\"{}\" --No lines in buffer--", file_name);
+            editor.status_line = format!("\"{}\" -- No lines in buffer --", file_name);
         } else {
             // "file_name" line n of m --p%-- col c char d
             editor.status_line = format!(

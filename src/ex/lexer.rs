@@ -235,7 +235,7 @@ impl Lexer {
                     }
                 }
                 SubstitutionCommandState::Options => {
-                    if c.is_alphabetic() {
+                    if c == 'g' || c == 'i' {
                         lexeme.push(c);
                     } else {
                         if !lexeme.is_empty() {

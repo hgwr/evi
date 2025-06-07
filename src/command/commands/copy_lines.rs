@@ -9,9 +9,15 @@ use crate::generic_error::GenericResult;
 pub struct CopyLines {
     pub line_range: LineRange,
     pub address: LineAddressType,
+    pub insertion_idx: Option<usize>,
+    pub copied_len: usize,
 }
 
 impl Command for CopyLines {
+    fn is_undoable(&self) -> bool {
+        true
+    }
+
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let buffer_len = editor.buffer.lines.len();
 
@@ -69,8 +75,35 @@ impl Command for CopyLines {
                 .buffer
                 .lines
                 .splice(insertion_idx..insertion_idx, lines_to_copy.into_iter());
+            self.insertion_idx = Some(insertion_idx);
+            self.copied_len = end_idx - start_idx + 1;
+        } else {
+            self.insertion_idx = None;
+            self.copied_len = 0;
         }
         Ok(())
+    }
+
+    fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        if let Some(idx) = self.insertion_idx {
+            for _ in 0..self.copied_len {
+                if idx < editor.buffer.lines.len() {
+                    editor.buffer.lines.remove(idx);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
+        let mut new_cmd = Box::new(CopyLines {
+            line_range: self.line_range.clone(),
+            address: self.address.clone(),
+            insertion_idx: None,
+            copied_len: 0,
+        });
+        new_cmd.execute(editor)?;
+        Ok(Some(new_cmd))
     }
 
     fn as_any(&self) -> &dyn Any {

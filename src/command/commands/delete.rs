@@ -173,6 +173,10 @@ pub struct DeleteLines {
 }
 
 impl Command for DeleteLines {
+    fn is_undoable(&self) -> bool {
+        true
+    }
+
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let start_address = self.line_range.start.clone();
         let end_address = self.line_range.end.clone();

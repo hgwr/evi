@@ -204,11 +204,13 @@ impl Parser {
         line_range: &LineRange,
     ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         if self.accept(TokenType::Command, "m") {
-            self.pop();
             let address = self.destination_address()?;
             let mv = move_lines::MoveLines {
                 line_range: line_range.clone(),
                 address,
+                original_start_idx: None,
+                inserted_base: None,
+                drained_lines: Vec::new(),
             };
             return Ok(MyOption::Some(Box::new(mv)));
         }
@@ -220,9 +222,9 @@ impl Parser {
         line_range: &LineRange,
     ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         if self.accept(TokenType::Command, "co") {
-            self.pop();
+            // accepted 'co'
         } else if self.accept(TokenType::Command, "t") {
-            self.pop();
+            // accepted 't'
         } else {
             return Ok(MyOption::None);
         }
@@ -230,6 +232,8 @@ impl Parser {
         let cp = copy_lines::CopyLines {
             line_range: line_range.clone(),
             address,
+            insertion_idx: None,
+            copied_len: 0,
         };
         return Ok(MyOption::Some(Box::new(cp)));
     }

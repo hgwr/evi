@@ -86,10 +86,9 @@ impl Command for CopyLines {
 
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if let Some(idx) = self.insertion_idx {
-            if idx + self.copied_len <= editor.buffer.lines.len() {
-                editor.buffer.lines.drain(idx..idx+self.copied_len);
-            }
-        }
+            if idx < editor.buffer.lines.len() {
+                let end = (idx + self.copied_len).min(editor.buffer.lines.len());
+                editor.buffer.lines.drain(idx..end);
         Ok(())
     }
 

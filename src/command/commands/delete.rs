@@ -210,8 +210,10 @@ impl Command for DeleteLines {
             if let Some(text) = &self.text {
                 let row = editor_cursor_data.cursor_position_in_buffer.row;
                 let col = editor_cursor_data.cursor_position_in_buffer.col;
-                editor.buffer.insert(row, col, text)?;
-                editor.restore_cursor_data(*editor_cursor_data);
+                if row < editor.buffer.lines.len() {
+                    editor.buffer.insert(row, col, text)?;
+                    editor.restore_cursor_data(*editor_cursor_data);
+                }
             }
         }
         Ok(())

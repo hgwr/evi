@@ -1,7 +1,7 @@
 import os
 import pexpect
 import tempfile
-
+from typing import cast
 from .conftest import EVI_BIN
 
 
@@ -17,7 +17,12 @@ def run_commands(commands, initial_content="", exit_cmd=":wq\r"):
         env = os.environ.copy()
         env.setdefault("TERM", "xterm")
 
-        child = pexpect.spawn(EVI_BIN, [path], env=env, encoding="utf-8")
+        child = pexpect.spawn(
+            EVI_BIN,
+            [path],
+            env=cast(os._Environ[str], env),
+            encoding="utf-8"
+        )
         child.delaybeforesend = 0.05
 
         for c in commands:

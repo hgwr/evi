@@ -1,10 +1,20 @@
-# `evi` Build and Test Instructions
+# `evi` Project Overview and Instructions
 
-This document describes the commands required to build the `evi` Rust project, run unit tests, and run end-to-end (e2e) tests.
+This document provides an overview of the `evi` project and the commands required to build and test it.
 
-## Rust Project (`evi`)
+## Project Goal
 
-### Build
+`evi` is a clone of the POSIX-compatible `vi` editor, developed in Rust. The primary objective of this project is to faithfully replicate the behavior of the standard `vi` editor as specified by the POSIX standard.
+
+To achieve this, development is heavily driven by end-to-end (e2e) tests. These tests ensure that `evi`'s functionality precisely matches that of a reference `vi` implementation, providing a robust way to verify compatibility as the project evolves.
+
+## Build and Test Instructions
+
+This section describes the commands required to build the `evi` Rust project, run unit tests, and run end-to-end (e2e) tests.
+
+### Rust Project (`evi`)
+
+#### Build
 
 To compile the `evi` application:
 
@@ -12,7 +22,7 @@ To compile the `evi` application:
 cargo build --verbose
 ```
 
-### Unit Testing
+#### Unit Testing
 
 To run unit tests for the `evi` application:
 
@@ -20,15 +30,17 @@ To run unit tests for the `evi` application:
 cargo test --verbose
 ```
 
-## End-to-end (e2e) Testing
+### End-to-end (e2e) Testing
 
-The e2e tests are written in Python and use `pytest`.
+The e2e tests are crucial for ensuring that `evi` behaves identically to a POSIX-compatible `vi` editor. The tests are located in the `e2e/` directory, written in Python, and utilize `pytest` for execution and `pexpect` for interaction.
 
-### Prerequisites
+Using `pexpect`, each test programmatically controls the `evi` process, sending keystrokes and asserting the editor's state against the expected behavior of a standard `vi`. This rigorous testing methodology is central to the development process.
 
-Make sure you have Python and pip installed.
+#### Prerequisites
 
-### Install dependencies
+Make sure you have Python and `pip` installed.
+
+#### Install dependencies
 
 Install the Python dependencies required for e2e testing:
 
@@ -36,9 +48,9 @@ Install the Python dependencies required for e2e testing:
 pip install -r e2e/requirements.txt
 ```
 
-### Run e2e tests
+#### Run e2e tests
 
-Run e2e tests:
+To run the full suite of e2e tests:
 
 ```sh
 pytest e2e --verbose

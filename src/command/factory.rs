@@ -6,11 +6,13 @@ use crossterm::event::KeyCode;
 
 use super::commands::append::Append;
 use super::commands::delete::{Delete, DeleteChar};
+use super::commands::paste::Paste;
 use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
 use super::commands::search::RepeatSearch;
 use super::commands::open_line::OpenLine;
 use super::commands::undo::Undo;
+use super::commands::yank::Yank;
 
 pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
     match command_data {
@@ -116,6 +118,25 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             jump_command_data_opt: range.clone(),
             ..Default::default()
         }),
+
+        CommandData {
+            key_code: KeyCode::Char('y'),
+            range,
+            ..
+        } => Box::new(Yank {
+            jump_command_data_opt: range.clone(),
+            ..Default::default()
+        }),
+
+        CommandData {
+            key_code: KeyCode::Char('p'),
+            ..
+        } => Box::new(Paste::default()),
+
+        CommandData {
+            key_code: KeyCode::Char('P'),
+            ..
+        } => Box::new(Paste { before: true, ..Default::default() }),
 
         // undo command
         CommandData {

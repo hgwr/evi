@@ -76,6 +76,8 @@ pub struct Editor {
     pub window_position_in_buffer: CursorPositionInBuffer,
     pub status_line: String,
     pub command_history: Vec<Vec<ExecutedCommand>>,
+    pub unnamed_register: String,
+    pub unnamed_register_linewise: bool,
     pub last_input_string: String,
     pub ex_command_data: String,
     pub search_query: String,
@@ -101,6 +103,8 @@ impl Editor {
             window_position_in_buffer: CursorPositionInBuffer { row: 0, col: 0 },
             status_line: "".to_string(),
             command_history: Vec::new(),
+            unnamed_register: String::new(),
+            unnamed_register_linewise: false,
             last_input_string: "".to_string(),
             ex_command_data: "".to_string(),
             search_query: String::new(),
@@ -789,5 +793,66 @@ mod tests {
         assert_eq!(editor.cursor_position_in_buffer.col, 8);
         editor.repeat_search(false).unwrap();
         assert_eq!(editor.cursor_position_in_buffer.col, 0);
+    }
+
+    #[test]
+    fn test_yank_and_paste() {
+        use crate::command::base::{CommandData, JumpCommandData};
+        use crossterm::event::KeyCode;
+
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["hello world".to_string(), "second".to_string()];
+
+        // yank word 'hello'
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('y'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: Some(JumpCommandData {
+                count: 1,
+                key_code: KeyCode::Char('w'),
+                modifiers: crossterm::event::KeyModifiers::NONE,
+            }),
+        };
+        editor.execute_command(cmd).unwrap();
+        assert_eq!(editor.unnamed_register, "hello ");
+
+        // paste before start of second line
+        editor.move_cursor_to(1, 0).unwrap();
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('P'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: None,
+        };
+        editor.execute_command(cmd).unwrap();
+        assert_eq!(editor.buffer.lines[1], "hello second");
+
+        // yank line 1 (linewise)
+        editor.move_cursor_to(0, 0).unwrap();
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('y'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: Some(JumpCommandData {
+                count: 1,
+                key_code: KeyCode::Char('y'),
+                modifiers: crossterm::event::KeyModifiers::NONE,
+            }),
+        };
+        editor.execute_command(cmd).unwrap();
+        assert_eq!(editor.unnamed_register, "hello world\n");
+
+        // paste below last line
+        editor.move_cursor_to(1, 0).unwrap();
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('p'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: None,
+        };
+        editor.execute_command(cmd).unwrap();
+        assert_eq!(editor.buffer.lines[2], "hello world");
     }
 }

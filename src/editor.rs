@@ -284,7 +284,7 @@ impl Editor {
             Mode::Replace => {}
             Mode::ExCommand => {
                 self.mode = Mode::Replace;
-                self.status_line = "".to_string();
+                self.status_line = "-- REPLACE --".to_string();
             }
             Mode::Search(_) => {
                 self.mode = Mode::Replace;

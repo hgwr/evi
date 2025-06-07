@@ -65,15 +65,11 @@ impl Command for MoveLines {
 
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if let (Some(base), Some(start_idx)) = (self.inserted_base, self.original_start_idx) {
-            for _ in 0..self.drained_lines.len() {
-                if base < editor.buffer.lines.len() {
-                    editor.buffer.lines.remove(base);
-                }
+            if base < editor.buffer.lines.len() {
+                let remove_end = std::cmp::min(base + self.drained_lines.len(), editor.buffer.lines.len());
+                editor.buffer.lines.drain(base..remove_end);
             }
-            editor
-                .buffer
-                .lines
-                .splice(start_idx..start_idx, self.drained_lines.clone().into_iter());
+            editor.buffer.lines.splice(start_idx..start_idx, self.drained_lines.clone().into_iter());
         }
         Ok(())
     }

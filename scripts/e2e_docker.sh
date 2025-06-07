@@ -7,4 +7,4 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PYTEST_ARGS="${*:-e2e --verbose}"
 
 # Run tests inside container
-docker run --rm -v "$REPO_DIR":/evi evi-e2e
+docker run --rm -v "$REPO_DIR":/evi -e "PYTEST_ARGS=${PYTEST_ARGS}" evi-e2e

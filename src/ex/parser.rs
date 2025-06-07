@@ -2,6 +2,7 @@ use std::ops::BitOr;
 
 use crate::command::base::Command;
 use crate::command::commands::delete;
+use crate::command::commands::global;
 use crate::command::commands::go_to_line;
 use crate::command::commands::substitute;
 use crate::data::LineAddressType;
@@ -56,6 +57,17 @@ impl Parser {
     pub fn new(input: &str) -> Self {
         let tokens = lexer::tokenize(input);
         println!("tokens {:?}", tokens);
+        Parser {
+            original_tokens: tokens.clone(),
+            tokens,
+            token_opt: MyOption::None,
+            stack: Vec::new(),
+            command_opt: MyOption::None,
+            line_range_opt: MyOption::None,
+        }
+    }
+
+    pub fn from_tokens(tokens: Vec<Token>) -> Self {
         Parser {
             original_tokens: tokens.clone(),
             tokens,
@@ -152,7 +164,8 @@ impl Parser {
         };
         let command_opt = self.display_command(&line_range)?
             | self.substitute_command(&line_range)?
-            | self.delete_command(&line_range)?;
+            | self.delete_command(&line_range)?
+            | self.global_command(&line_range)?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
         }
@@ -170,6 +183,67 @@ impl Parser {
                 text: None,
             };
             return Ok(MyOption::Some(Box::new(delete_command)));
+        }
+        Ok(MyOption::None)
+    }
+
+    fn global_command(
+        &mut self,
+        line_range: &LineRange,
+    ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "g") {
+            self.pop();
+            let mut invert = false;
+            if self.accept(TokenType::Symbol, "!") {
+                self.pop();
+                invert = true;
+            }
+
+            let pattern = if let MyOption::Some(tok) = &self.token_opt {
+                if tok.token_type == TokenType::Pattern
+                    || tok.token_type == TokenType::AddressPattern
+                {
+                    let t_type = tok.token_type.clone();
+                    self.accept_type(t_type);
+                    if let MyOption::Some(token) = self.pop() {
+                        token.lexeme
+                    } else {
+                        return Err(self.error("pattern expected"));
+                    }
+                } else {
+                    return Err(self.error("pattern expected"));
+                }
+            } else {
+                return Err(self.error("pattern expected"));
+            };
+
+            let mut remaining_tokens = Vec::new();
+            if let MyOption::Some(tok) = &self.token_opt {
+                remaining_tokens.push(tok.clone());
+            }
+            remaining_tokens.append(&mut self.tokens.clone());
+
+            self.tokens.clear();
+            self.token_opt = MyOption::Some(Token {
+                token_type: TokenType::EndOfInput,
+                lexeme: String::new(),
+            });
+
+            let command_tokens = if remaining_tokens.len() == 1
+                && remaining_tokens[0].token_type == TokenType::EndOfInput
+            {
+                None
+            } else {
+                Some(remaining_tokens)
+            };
+
+            let command = global::GlobalCommand {
+                line_range: line_range.clone(),
+                pattern,
+                command_tokens,
+                invert,
+            };
+            return Ok(MyOption::Some(Box::new(command)));
         }
         Ok(MyOption::None)
     }
@@ -352,10 +426,10 @@ impl Parser {
     }
 
     fn simple_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-        let command_opt = self.q_command()? 
-            | self.wq_command()? 
-            | self.q_exclamation_command()? 
-            | self.w_exclamation_command()? 
+        let command_opt = self.q_command()?
+            | self.wq_command()?
+            | self.q_exclamation_command()?
+            | self.w_exclamation_command()?
             | self.w_command()?
             | self.x_command()?
             | self.go_to_line_command()?;
@@ -621,5 +695,28 @@ mod tests {
         assert_eq!(sub.replacement, "CDE");
         assert!(!sub.global);
         assert!(!sub.ignore_case);
+    }
+
+    #[test]
+    fn test_parse_global_delete() {
+        let input = "g/foo/d";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<global::GlobalCommand>());
+        let g = command.downcast_ref::<global::GlobalCommand>().unwrap();
+        assert_eq!(g.pattern, "foo");
+        assert!(!g.invert);
+        assert!(g.command_tokens.is_some());
+    }
+
+    #[test]
+    fn test_parse_global_invert() {
+        let input = "g!/bar/p";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<global::GlobalCommand>());
+        let g = command.downcast_ref::<global::GlobalCommand>().unwrap();
+        assert_eq!(g.pattern, "bar");
+        assert!(g.invert);
     }
 }

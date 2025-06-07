@@ -36,4 +36,4 @@ The repository provides a Docker setup for running the e2e tests in an isolated 
 scripts/e2e_docker.sh
 ```
 
-This script mounts the project directory into the container and runs `cargo build --verbose` followed by `pytest e2e --verbose`.
+This script builds the Docker image based on the official `rust` image, mounts the project directory into the container, and runs `cargo build --verbose` followed by `pytest e2e --verbose`.

@@ -9,9 +9,16 @@ use crate::generic_error::GenericResult;
 pub struct MoveLines {
     pub line_range: LineRange,
     pub address: LineAddressType,
+    pub original_start_idx: Option<usize>,
+    pub inserted_base: Option<usize>,
+    pub drained_lines: Vec<String>,
 }
 
 impl Command for MoveLines {
+    fn is_undoable(&self) -> bool {
+        true
+    }
+
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let len = editor.buffer.lines.len();
         let mut start = editor.get_line_number_from(&self.line_range.start);
@@ -30,6 +37,8 @@ impl Command for MoveLines {
         let mut dest = editor.get_line_number_from(&self.address);
 
         let lines: Vec<String> = editor.buffer.lines.drain(start..=end).collect();
+        self.original_start_idx = Some(start);
+        self.drained_lines = lines.clone();
         if dest > end {
             dest -= lines.len();
         }
@@ -49,11 +58,36 @@ impl Command for MoveLines {
             dest + 1
         };
 
-        editor
-            .buffer
-            .lines
-            .splice(base..base, lines.into_iter());
+        editor.buffer.lines.splice(base..base, lines.into_iter());
+        self.inserted_base = Some(base);
         Ok(())
+    }
+
+    fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        if let (Some(base), Some(start_idx)) = (self.inserted_base, self.original_start_idx) {
+            if base < editor.buffer.lines.len() {
+                let end = (base + self.drained_lines.len()).min(editor.buffer.lines.len());
+                editor.buffer.lines.drain(base..end);
+            }
+            let insert_idx = start_idx.min(editor.buffer.lines.len());
+            editor
+                .buffer
+                .lines
+                .splice(insert_idx..insert_idx, self.drained_lines.clone().into_iter());
+        }
+        Ok(())
+    }
+
+    fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
+        let mut new_cmd = Box::new(MoveLines {
+            line_range: self.line_range.clone(),
+            address: self.address.clone(),
+            original_start_idx: None,
+            inserted_base: None,
+            drained_lines: Vec::new(),
+        });
+        new_cmd.execute(editor)?;
+        Ok(Some(new_cmd))
     }
 
     fn as_any(&self) -> &dyn Any {

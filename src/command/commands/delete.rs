@@ -173,6 +173,10 @@ pub struct DeleteLines {
 }
 
 impl Command for DeleteLines {
+    fn is_undoable(&self) -> bool {
+        true
+    }
+
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let start_address = self.line_range.start.clone();
         let end_address = self.line_range.end.clone();
@@ -206,10 +210,23 @@ impl Command for DeleteLines {
             if let Some(text) = &self.text {
                 let row = editor_cursor_data.cursor_position_in_buffer.row;
                 let col = editor_cursor_data.cursor_position_in_buffer.col;
-                editor.buffer.insert(row, col, text)?;
+                if row < editor.buffer.lines.len() {
+                    editor.buffer.insert(row, col, text)?;
+                    editor.restore_cursor_data(*editor_cursor_data);
+                }
             }
         }
         Ok(())
+    }
+
+    fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
+        let mut new_cmd = Box::new(DeleteLines {
+            editor_cursor_data: None,
+            line_range: self.line_range.clone(),
+            text: None,
+        });
+        new_cmd.execute(editor)?;
+        Ok(Some(new_cmd))
     }
 
     fn as_any(&self) -> &dyn Any {

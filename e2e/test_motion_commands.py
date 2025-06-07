@@ -31,7 +31,7 @@ def get_screen_and_cursor(child: pexpect.spawn, rows: int = 24) -> Tuple[str, Tu
     screen = child.before + child.after
     try:
         screen += child.read_nonblocking(size=4096, timeout=0.1)
-    except Exception:
+    except (pexpect.exceptions.TIMEOUT, pexpect.exceptions.EOF):
         pass
     matches = list(re.finditer(r"\x1b\[(\d+);(\d+)H", screen))
     for m in reversed(matches):

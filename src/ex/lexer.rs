@@ -1,5 +1,5 @@
-use crate::data::TokenType;
 use crate::data::Token;
+use crate::data::TokenType;
 
 #[derive(Debug, PartialEq)]
 enum SubstitutionCommandState {
@@ -606,5 +606,35 @@ mod tests {
         assert_eq!(tokens[4].token_type, TokenType::Command);
         assert_eq!(tokens[4].lexeme, "p");
         assert_eq!(tokens[5].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_global_delete() {
+        let input = "g/foo/d";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(tokens[0].token_type, TokenType::Command);
+        assert_eq!(tokens[0].lexeme, "g");
+        assert_eq!(tokens[1].token_type, TokenType::AddressPattern);
+        assert_eq!(tokens[1].lexeme, "foo");
+        assert_eq!(tokens[2].token_type, TokenType::Command);
+        assert_eq!(tokens[2].lexeme, "d");
+        assert_eq!(tokens[3].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_global_invert() {
+        let input = "g!/foo/p";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 5);
+        assert_eq!(tokens[0].token_type, TokenType::Command);
+        assert_eq!(tokens[0].lexeme, "g");
+        assert_eq!(tokens[1].token_type, TokenType::Symbol);
+        assert_eq!(tokens[1].lexeme, "!");
+        assert_eq!(tokens[2].token_type, TokenType::AddressPattern);
+        assert_eq!(tokens[2].lexeme, "foo");
+        assert_eq!(tokens[3].token_type, TokenType::Command);
+        assert_eq!(tokens[3].lexeme, "p");
+        assert_eq!(tokens[4].token_type, TokenType::EndOfInput);
     }
 }

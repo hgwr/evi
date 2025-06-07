@@ -1,6 +1,7 @@
 # evi - vi clone editor
 
 evi is a lightweight vi clone written in Rust. The project is still a work in progress but already provides a simple modal editor core.
+
 ## Repository Layout
 
 - **src/main.rs** – application entry point. Each module is declared at the top of this file.

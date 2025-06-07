@@ -165,7 +165,7 @@ impl Command for Delete {
         let mut new_cmd = Box::new(Delete {
             editor_cursor_data: None,
             text: None,
-            jump_command_data_opt: self.jump_command_data_opt,
+            jump_command_data_opt: self.jump_command_data_opt.clone(), // Ensure jump_command_data_opt is cloned
         });
         new_cmd.execute(editor)?;
         Ok(Some(new_cmd))

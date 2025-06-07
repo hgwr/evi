@@ -6,7 +6,7 @@ This document lists vi and ex commands from the POSIX vi specification that are 
 
 - ~~`o`, `O` – open a new line below/above the current line~~
 - `I`, `A` – insert/append at the beginning/end of line
-- `c`, `cc`, `cw`, `C` – change commands
+- ~~`c`, `cc`, `cw`, `C` – change commands~~
 - `y`, `yy`, `yw` – yank operations
 - `p`, `P` – paste text from the unnamed buffer
 - `r`, `R` – replace character or enter replace mode

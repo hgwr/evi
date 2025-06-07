@@ -1,4 +1,5 @@
 pub mod append;
+pub mod change;
 pub mod delete;
 pub mod esc;
 pub mod exit;

@@ -16,6 +16,9 @@ def get_cursor_position(child: pexpect.spawn) -> Tuple[int, int]:
     return row, col
 
 
+# The `goto` function is currently unused in tests but is intended for future use
+# in testing or implementing motion commands that require moving the cursor to
+# a specific (row, col) position in the editor.
 def goto(child: pexpect.spawn, row: int, col: int) -> None:
     """Move the cursor to (row, col) using vi commands."""
     child.send(f"{row}G")

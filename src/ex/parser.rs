@@ -1,9 +1,11 @@
 use std::ops::BitOr;
 
 use crate::command::base::Command;
+use crate::command::commands::copy_lines;
 use crate::command::commands::delete;
 use crate::command::commands::global;
 use crate::command::commands::go_to_line;
+use crate::command::commands::move_lines;
 use crate::command::commands::substitute;
 use crate::data::LineAddressType;
 use crate::data::LineRange;
@@ -165,6 +167,8 @@ impl Parser {
         let command_opt = self.display_command(&line_range)?
             | self.substitute_command(&line_range)?
             | self.delete_command(&line_range)?
+            | self.move_command(&line_range)?
+            | self.copy_command(&line_range)?
             | self.global_command(&line_range)?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
@@ -185,6 +189,49 @@ impl Parser {
             return Ok(MyOption::Some(Box::new(delete_command)));
         }
         Ok(MyOption::None)
+    }
+
+    fn destination_address(&mut self) -> Result<LineAddressType, GenericError> {
+        if let MyOption::Some(address) = self.line_address()? {
+            Ok(address)
+        } else {
+            Err(self.error("line address expected"))
+        }
+    }
+
+    fn move_command(
+        &mut self,
+        line_range: &LineRange,
+    ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "m") {
+            self.pop();
+            let address = self.destination_address()?;
+            let mv = move_lines::MoveLines {
+                line_range: line_range.clone(),
+                address,
+            };
+            return Ok(MyOption::Some(Box::new(mv)));
+        }
+        Ok(MyOption::None)
+    }
+
+    fn copy_command(
+        &mut self,
+        line_range: &LineRange,
+    ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "co") {
+            self.pop();
+        } else if self.accept(TokenType::Command, "t") {
+            self.pop();
+        } else {
+            return Ok(MyOption::None);
+        }
+        let address = self.destination_address()?;
+        let cp = copy_lines::CopyLines {
+            line_range: line_range.clone(),
+            address,
+        };
+        return Ok(MyOption::Some(Box::new(cp)));
     }
 
     fn global_command(

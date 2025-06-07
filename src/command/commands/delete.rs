@@ -184,17 +184,17 @@ impl Command for DeleteLines {
             col: 0,
         };
         let end_cursor_data = crate::buffer::CursorPositionInBuffer {
-            row: end_row,
+            row: end_row + 1,
             col: 0,
         };
 
         self.editor_cursor_data = Some(editor.snapshot_cursor_data());
-        self.editor_cursor_data.as_mut().unwrap().cursor_position_in_buffer = start_cursor_data;
+        self.editor_cursor_data
+            .as_mut()
+            .unwrap()
+            .cursor_position_in_buffer = start_cursor_data;
 
-        if let Ok(deleted) = editor.buffer.delete(
-            start_cursor_data,
-            end_cursor_data,
-        ) {
+        if let Ok(deleted) = editor.buffer.delete(start_cursor_data, end_cursor_data) {
             self.text = Some(deleted);
         }
 

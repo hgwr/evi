@@ -38,6 +38,7 @@ pub enum SimpleLineAddressType {
 #[derive(Debug, PartialEq, Clone)]
 pub enum LineAddressType {
     Absolute(SimpleLineAddressType),
+    #[allow(dead_code)]
     Relative(SimpleLineAddressType, isize),
 }
 

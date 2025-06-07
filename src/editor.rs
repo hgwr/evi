@@ -289,6 +289,7 @@ impl Editor {
                 self.mode = Mode::Replace;
                 self.status_line = "-- REPLACE --".to_string();
             }
+    #[allow(dead_code)]
         self.set_replace_char_mode_with_count(1);
     }
 

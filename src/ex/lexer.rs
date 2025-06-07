@@ -3,6 +3,7 @@ use crate::data::Token;
 
 #[derive(Debug, PartialEq)]
 enum SubstitutionCommandState {
+    #[allow(dead_code)]
     None,
     Command,
     FirstSeparator,
@@ -19,6 +20,7 @@ enum FileCommandState {
     None,
     Command,
     Filename,
+    #[allow(dead_code)]
     End,
 }
 
@@ -48,6 +50,7 @@ impl Lexer {
         self.position += 1;
     }
 
+    #[allow(dead_code)]
     fn peek_char(&self) -> Option<char> {
         if self.position >= self.input.len() {
             None

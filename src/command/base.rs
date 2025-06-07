@@ -35,9 +35,11 @@ pub trait Command {
         // do nothing
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     fn as_any(&self) -> &dyn Any;
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 impl dyn Command {
     pub fn is<T: Command + 'static>(&self) -> bool {
         self.as_any().is::<T>()

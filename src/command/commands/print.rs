@@ -6,6 +6,7 @@ use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
 pub struct PrintCommand {
+    #[cfg_attr(not(test), allow(dead_code))]
     pub line_range: LineRange
 }
 

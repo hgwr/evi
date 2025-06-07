@@ -6,6 +6,7 @@ use crate::generic_error::GenericResult;
 
 #[derive(Default)]
 pub struct WriteCommand {
+    #[cfg_attr(not(test), allow(dead_code))]
     pub force: bool,
 }
 

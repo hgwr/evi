@@ -97,6 +97,63 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                             editor.append_search_query(key_data);
                         }
                     }
+                } else if editor.is_replace_char_mode() {
+                    match key_event.code {
+                        event::KeyCode::Esc => {
+                            editor.set_command_mode();
+                            editor.status_line = "".to_string();
+                        }
+                        event::KeyCode::Char(c) => {
+                            for i in 0..editor.pending_replace_char_count {
+                                if i + 1 == editor.pending_replace_char_count {
+                                    editor.replace_char_at_cursor(c)?;
+                                } else {
+                                    editor.replace_char_and_move(c)?;
+                                }
+                            }
+                            editor.set_command_mode();
+                        }
+                        _ => {}
+                    }
+                } else if editor.is_replace_mode() {
+                    let key_data: KeyData = key_event.into();
+                    match key_data {
+                        KeyData {
+                            key_code: event::KeyCode::Enter,
+                            ..
+                        } => {
+                            editor.append_new_line()?;
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Esc,
+                            ..
+                        } => {
+                            editor.set_command_mode();
+                            editor.status_line = "".to_string();
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Backspace,
+                            ..
+                        }
+                        | KeyData {
+                            key_code: event::KeyCode::Char('h'),
+                            modifiers: KeyModifiers::CONTROL,
+                        } => {
+                            editor.backward_delete_char()?;
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Char('l'),
+                            modifiers: KeyModifiers::CONTROL,
+                            ..
+                        } => {
+                            editor.render(&mut stdout)?;
+                        }
+                        _ => {
+                            if let crossterm::event::KeyCode::Char(c) = key_event.code {
+                                editor.replace_char_and_move(c)?;
+                            }
+                        }
+                    }
                 } else if editor.is_insert_mode() {
                     let key_data: KeyData = key_event.into();
                     match key_data {

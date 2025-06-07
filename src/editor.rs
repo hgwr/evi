@@ -53,6 +53,8 @@ pub struct Region {
 pub enum Mode {
     Command,
     Insert,
+    Replace,
+    ReplaceChar,
     ExCommand,
     Search(SearchDirection),
 }
@@ -83,6 +85,7 @@ pub struct Editor {
     pub search_query: String,
     pub last_search_pattern: Option<String>,
     pub last_search_direction: Option<SearchDirection>,
+    pub pending_replace_char_count: usize,
 }
 
 impl Editor {
@@ -110,6 +113,7 @@ impl Editor {
             search_query: String::new(),
             last_search_pattern: None,
             last_search_direction: None,
+            pending_replace_char_count: 1,
         }
     }
 
@@ -165,6 +169,16 @@ impl Editor {
                 self.mode = Mode::Command;
                 self.convert_repetitive_command_history_to_commands_history();
                 self.status_line = "".to_string();
+            }
+            Mode::Replace => {
+                self.mode = Mode::Command;
+                self.convert_repetitive_command_history_to_commands_history();
+                self.status_line = "".to_string();
+            }
+            Mode::ReplaceChar => {
+                self.mode = Mode::Command;
+                self.status_line = "".to_string();
+                self.pending_replace_char_count = 1;
             }
             Mode::Search(_) => {
                 self.mode = Mode::Command;
@@ -245,6 +259,11 @@ impl Editor {
                 self.last_input_string = "".to_string();
             }
             Mode::Insert => {}
+            Mode::Replace | Mode::ReplaceChar => {
+                self.mode = Mode::Insert;
+                self.status_line = "-- INSERT --".to_string();
+                self.last_input_string = String::new();
+            }
             Mode::Search(_) => {
                 self.mode = Mode::Insert;
                 self.status_line = "-- INSERT --".to_string();
@@ -252,6 +271,48 @@ impl Editor {
                 self.search_query.clear();
             }
         }
+    }
+
+    pub fn set_replace_mode(&mut self) {
+        match self.mode {
+            Mode::Command | Mode::ReplaceChar => {
+                self.mode = Mode::Replace;
+                self.status_line = "-- REPLACE --".to_string();
+                self.last_input_string = String::new();
+            }
+            Mode::Insert => {
+                self.mode = Mode::Replace;
+                self.status_line = "-- REPLACE --".to_string();
+            }
+            Mode::Replace => {}
+            Mode::ExCommand => {
+                self.mode = Mode::Replace;
+                self.status_line = "-- REPLACE --".to_string();
+            }
+            Mode::Search(_) => {
+                self.mode = Mode::Replace;
+                self.status_line = "-- REPLACE --".to_string();
+                self.last_input_string = String::new();
+                self.search_query.clear();
+            }
+        }
+    }
+
+    pub fn set_replace_char_mode_with_count(&mut self, count: usize) {
+        self.pending_replace_char_count = count;
+    }
+
+    pub fn set_replace_char_mode(&mut self) {
+        self.mode = Mode::ReplaceChar;
+        self.last_input_string = String::new();
+    }
+
+    pub fn is_replace_mode(&self) -> bool {
+        matches!(self.mode, Mode::Replace)
+    }
+
+    pub fn is_replace_char_mode(&self) -> bool {
+        matches!(self.mode, Mode::ReplaceChar)
     }
 
     pub fn is_command_mode(&self) -> bool {
@@ -593,6 +654,33 @@ impl Editor {
         Ok(())
     }
 
+    pub fn replace_char_at_cursor(&mut self, c: char) -> GenericResult<()> {
+        let row = self.cursor_position_in_buffer.row;
+        let col = self.cursor_position_in_buffer.col;
+        if col < self.get_num_of_current_line_chars() {
+            self.buffer.delete_char(row, col)?;
+        }
+        self.buffer.insert_char(row, col, c)?;
+        Ok(())
+    }
+
+    pub fn replace_char_and_move(&mut self, c: char) -> GenericResult<()> {
+        self.replace_char_at_cursor(c)?;
+        self.last_input_string.push(c);
+        let char_width = crate::util::get_char_width(c);
+        self.cursor_position_in_buffer.col += 1;
+        self.cursor_position_on_screen.col += char_width;
+        if self.cursor_position_on_screen.col >= self.terminal_size.width {
+            self.cursor_position_on_screen.col = 0;
+            if self.cursor_position_on_screen.row < self.content_height() {
+                self.cursor_position_on_screen.row += 1;
+            } else {
+                self.window_position_in_buffer.row += 1;
+            }
+        }
+        Ok(())
+    }
+
     pub fn backward_delete_char(&mut self) -> GenericResult<()> {
         if self.cursor_position_in_buffer.col > 0 && self.last_input_string.len() > 0 {
             self.buffer.delete_char(
@@ -662,7 +750,7 @@ impl Editor {
     pub fn get_line_number_from(&mut self, line_address: &LineAddressType) -> usize {
         let line_number: isize = match line_address {
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::LineNumber(n)) => {
-                let input = (*n as isize);
+                let input = *n as isize;
                 if input == 0 {
                     0
                 } else {
@@ -685,7 +773,7 @@ impl Editor {
             }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::FirstLine, i) => 0 + i,
             crate::data::LineAddressType::Relative(SimpleLineAddressType::LineNumber(n), i) => {
-                (*n as isize) + i
+                *n as isize + i
             }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::CurrentLine, i) => {
                 (self.cursor_position_in_buffer.row as isize) + i
@@ -696,7 +784,7 @@ impl Editor {
             crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
                 (self.buffer.lines.len().saturating_sub(1) as isize) + i
             }
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), i) => {
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), _i) => {
                 // TODO: Implement
                 unimplemented!()
             }

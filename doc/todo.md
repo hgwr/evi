@@ -9,7 +9,7 @@ This document lists vi and ex commands from the POSIX vi specification that are 
 - ~~`c`, `cc`, `cw`, `C` – change commands~~
 - ~~`y`, `yy`, `yw` – yank operations~~
 - ~~`p`, `P` – paste text from the unnamed buffer~~
-- `r`, `R` – replace character or enter replace mode
+- ~~`r`, `R` – replace character or enter replace mode~~
 - `J` – join lines
 - ~~`/`, `?`, `n`, `N` – search motions~~
 - `f`, `F`, `t`, `T` – find character on the current line

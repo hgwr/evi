@@ -11,6 +11,8 @@ pub mod no_op_command;
 pub mod open_line;
 pub mod print;
 pub mod paste;
+pub mod replace;
+pub mod replace_char;
 pub mod search;
 pub mod substitute;
 pub mod yank;

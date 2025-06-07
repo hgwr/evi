@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use crate::command::base::Command;
-use crate::editor::{Editor, SearchDirection};
+use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
 pub struct RepeatSearch {

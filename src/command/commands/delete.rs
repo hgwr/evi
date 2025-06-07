@@ -161,6 +161,16 @@ impl Command for Delete {
         Ok(())
     }
 
+    fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
+        let mut new_cmd = Box::new(Delete {
+            editor_cursor_data: None,
+            text: None,
+            jump_command_data_opt: self.jump_command_data_opt,
+        });
+        new_cmd.execute(editor)?;
+        Ok(Some(new_cmd))
+    }
+
     fn as_any(&self) -> &dyn Any {
         self
     }

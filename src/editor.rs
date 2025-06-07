@@ -422,7 +422,7 @@ impl Editor {
             command_data,
             command,
         }];
-        self.last_command = Some(chunk.clone());
+        // Ex commands should be undoable but should not affect the repeat ('.') state.
         self.command_history.push(chunk);
         self.ex_command_data = "".to_string();
         Ok(())

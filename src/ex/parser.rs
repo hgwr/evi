@@ -469,6 +469,7 @@ impl Parser {
                 replacement,
                 global,
                 ignore_case,
+                original_lines: Vec::new(),
             };
             return Ok(MyOption::Some(Box::new(command)));
         }

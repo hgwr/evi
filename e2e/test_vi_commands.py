@@ -36,6 +36,16 @@ def test_undo():
     assert result.strip() == 'hello'
 
 
+def test_repeat_command():
+    result = run_commands(['x', '.', '.'], initial_content='abc\n')
+    assert result.strip() == ''
+
+
+def test_undo_then_repeat():
+    result = run_commands(['x', 'u', '.'], initial_content='abc\n')
+    assert result.strip() == 'bc'
+
+
 def test_write_quit_ZZ():
     result = run_commands(['i', 'done', '\x1b', 'ZZ'], exit_cmd=None)
     assert result.strip() == 'done'

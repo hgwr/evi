@@ -4,6 +4,7 @@ use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
+#[derive(Clone)]
 pub struct ExitCommand;
 impl Command for ExitCommand {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -22,6 +23,7 @@ impl Command for ExitCommand {
     }
 }
 
+#[derive(Clone)]
 pub struct ExitWithSaveCommand;
 impl Command for ExitWithSaveCommand {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -38,6 +40,7 @@ impl Command for ExitWithSaveCommand {
     }
 }
 
+#[derive(Clone)]
 pub struct ExitWithoutSaveCommand;
 impl Command for ExitWithoutSaveCommand {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {

@@ -5,12 +5,11 @@ use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
 #[derive(Clone)]
-pub struct NoOpCommand;
+pub struct Repeat;
 
-impl Command for NoOpCommand {
-    fn execute(&mut self, _editor: &mut Editor) -> GenericResult<()> {
-        // 何もしない
-        Ok(())
+impl Command for Repeat {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        editor.repeat_last_command()
     }
 
     fn as_any(&self) -> &dyn Any {

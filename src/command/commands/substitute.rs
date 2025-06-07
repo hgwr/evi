@@ -7,6 +7,7 @@ use crate::data::LineRange;
 use crate::editor::Editor;
 use crate::generic_error::{GenericError, GenericResult};
 
+#[derive(Clone)]
 pub struct SubstituteCommand {
     pub line_range: LineRange,
     pub pattern: String,
@@ -45,4 +46,3 @@ impl Command for SubstituteCommand {
         self
     }
 }
-

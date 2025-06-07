@@ -6,6 +6,7 @@ use crate::data::{LineAddressType, LineRange, SimpleLineAddressType};
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
+#[derive(Clone)]
 pub struct MoveLines {
     pub line_range: LineRange,
     pub address: LineAddressType,
@@ -70,10 +71,10 @@ impl Command for MoveLines {
                 editor.buffer.lines.drain(base..end);
             }
             let insert_idx = start_idx.min(editor.buffer.lines.len());
-            editor
-                .buffer
-                .lines
-                .splice(insert_idx..insert_idx, self.drained_lines.clone().into_iter());
+            editor.buffer.lines.splice(
+                insert_idx..insert_idx,
+                self.drained_lines.clone().into_iter(),
+            );
         }
         Ok(())
     }

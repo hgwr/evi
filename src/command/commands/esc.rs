@@ -4,6 +4,7 @@ use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
+#[derive(Clone)]
 pub struct Esc;
 impl Command for Esc {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {

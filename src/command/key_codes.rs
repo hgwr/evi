@@ -22,7 +22,7 @@ pub fn is_editing_command_without_range(key: &KeyCode) -> bool {
         Char('i') | Char('I') | Char('a') | Char('A') => true,
         Char('o') | Char('O') | Char('s') | Char('S') => true,
         Char('x') | Char('X') | Char('r') | Char('R') => true,
-        Char('D') | Char('p') | Char('P') | Char('~') => true,
+        Char('D') | Char('p') | Char('P') | Char('~') | Char('.') => true,
         Char('u') => true,
         _ => false,
     }

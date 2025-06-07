@@ -6,6 +6,7 @@ use crate::data::{LineAddressType, LineRange, SimpleLineAddressType};
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
+#[derive(Clone)]
 pub struct CopyLines {
     pub line_range: LineRange,
     pub address: LineAddressType,

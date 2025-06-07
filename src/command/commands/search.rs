@@ -4,6 +4,7 @@ use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
+#[derive(Clone)]
 pub struct RepeatSearch {
     pub same_direction: bool,
 }

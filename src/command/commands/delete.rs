@@ -166,6 +166,7 @@ impl Command for Delete {
     }
 }
 
+#[derive(Clone)]
 pub struct DeleteLines {
     pub editor_cursor_data: Option<crate::editor::EditorCursorData>,
     pub line_range: crate::data::LineRange,

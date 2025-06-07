@@ -6,6 +6,7 @@ use crate::generic_error::GenericResult;
 
 // File
 // Historical versions of the ex editor file command displayed a current line and number of lines in the edit buffer of 0 when the file was empty, while the vi <control>-G command displayed a current line and number of lines in the edit buffer of 1 in the same situation. POSIX.1-2017 does not permit this discrepancy, instead requiring that a message be displayed indicating that the file is empty.
+#[derive(Clone)]
 pub struct DisplayFile;
 impl Command for DisplayFile {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {

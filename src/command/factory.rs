@@ -208,6 +208,11 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             ..
         } => Box::new(Undo {}),
 
+        CommandData {
+            key_code: KeyCode::Char('.'),
+            ..
+        } => Box::new(super::commands::repeat::Repeat {}),
+
         // Control + g
         CommandData {
             key_code: KeyCode::Char('g'),

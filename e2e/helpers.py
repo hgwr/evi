@@ -1,6 +1,7 @@
 import os
 import pexpect
 import tempfile
+import time
 from typing import cast
 from .conftest import EVI_BIN
 
@@ -32,11 +33,15 @@ def run_commands(commands, initial_content="", exit_cmd=":wq\r"):
         # to ensure that ``ESC`` is recognised correctly across platforms.
         #
         # The value can be overridden using ``EVI_DELAY_BEFORE_SEND`` for
-        # experimentation, but defaults to 0.1 seconds.
+        # experimentation, but defaults to 0.1 seconds. ``EVI_DELAY_AFTER_ESC``
+        # can be used to delay after sending ESC and defaults to 0.05 seconds.
         child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
+        delay_after_esc = float(os.getenv("EVI_DELAY_AFTER_ESC", "0.05"))
 
         for c in commands:
             child.send(c)
+            if c == "\x1b" and delay_after_esc > 0:
+                time.sleep(delay_after_esc)
 
         if exit_cmd is not None:
             child.send(exit_cmd)

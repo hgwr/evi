@@ -107,9 +107,9 @@ impl Command for Change {
         }
         if let Some(cursor) = self.editor_cursor_data {
             if let Some(inserted) = &self.inserted_text {
-                let start = cursor.cursor_position_in_buffer;
-                let end = next_position(start, inserted);
-                editor.buffer.delete(start, end)?;
+                let row = cursor.cursor_position_in_buffer.row;
+                let col = cursor.cursor_position_in_buffer.col;
+                editor.buffer.insert(row, col, inserted)?;
             }
             if let Some(deleted) = &self.deleted_text {
                 editor.buffer.insert(cursor.cursor_position_in_buffer.row, cursor.cursor_position_in_buffer.col, deleted)?;

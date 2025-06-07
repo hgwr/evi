@@ -661,22 +661,31 @@ impl Editor {
     }
 
     pub fn repeat_last_command(&mut self) -> GenericResult<()> {
-        if let Some(last_chunk) = self.last_command.clone() {
-            let mut new_chunk: Vec<ExecutedCommand> = Vec::new();
-            for executed_command in last_chunk.into_iter() {
-                let mut command_to_act_on = executed_command.command;
-                let command_for_next_repeat = match command_to_act_on.redo(self)? {
-                    Some(next_command_state) => next_command_state,
-                    None => command_to_act_on, 
-                };
-                new_chunk.push(ExecutedCommand {
-                    command_data: executed_command.command_data,
-                    command: command_for_next_repeat,
+        if let Some(last_chunk_from_editor_state) = self.last_command.clone() {
+            let mut new_chunk_for_history_and_next_repeat: Vec<ExecutedCommand> = Vec::new();
+            for executed_command_orig_data in last_chunk_from_editor_state.into_iter() {
+                let mut command_instance_for_iteration = executed_command_orig_data.command;
+                let repeat_count = executed_command_orig_data.command_data.count;
+
+                for _i in 0..repeat_count {
+                    match command_instance_for_iteration.redo(self)? {
+                        Some(next_command_state) => {
+                            command_instance_for_iteration = next_command_state;
+                        }
+                        None => {
+                            // command_instance_for_iteration was (presumably) mutated by redo(), so we continue to use it.
+                        }
+                    }
+                }
+                // After N redos, command_instance_for_iteration holds the final state of this command part
+                new_chunk_for_history_and_next_repeat.push(ExecutedCommand {
+                    command_data: executed_command_orig_data.command_data, // Store original CommandData (with its count)
+                    command: command_instance_for_iteration,
                 });
             }
-            if !new_chunk.is_empty() {
-                self.last_command = Some(new_chunk.clone());
-                self.command_history.push(new_chunk);
+            if !new_chunk_for_history_and_next_repeat.is_empty() {
+                self.last_command = Some(new_chunk_for_history_and_next_repeat.clone());
+                self.command_history.push(new_chunk_for_history_and_next_repeat);
             }
         }
         Ok(())

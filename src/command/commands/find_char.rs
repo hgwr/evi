@@ -30,6 +30,7 @@ impl Command for FindChar {
     }
 }
 
+#[derive(Clone)]
 pub struct RepeatFindChar;
 
 impl Command for RepeatFindChar {

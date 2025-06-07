@@ -90,6 +90,7 @@ pub struct Editor {
     pub window_position_in_buffer: CursorPositionInBuffer,
     pub status_line: String,
     pub command_history: Vec<Vec<ExecutedCommand>>,
+    pub last_command: Option<Vec<ExecutedCommand>>,
     pub unnamed_register: String,
     pub unnamed_register_linewise: bool,
     pub last_input_string: String,
@@ -119,6 +120,7 @@ impl Editor {
             window_position_in_buffer: CursorPositionInBuffer { row: 0, col: 0 },
             status_line: "".to_string(),
             command_history: Vec::new(),
+            last_command: None,
             unnamed_register: String::new(),
             unnamed_register_linewise: false,
             last_input_string: "".to_string(),
@@ -215,7 +217,9 @@ impl Editor {
 
             let count = last_executed_command.command_data.count;
             if count == 1 {
-                self.command_history.push(vec![last_executed_command]);
+                let chunk = vec![last_executed_command];
+                self.last_command = Some(chunk.clone());
+                self.command_history.push(chunk);
             } else if count >= 2 {
                 last_executed_command.command_data.count = 1;
                 let command_data: CommandData = last_executed_command.command_data.clone();
@@ -262,6 +266,7 @@ impl Editor {
             info!("command_series.len(): {}", command_series.len());
         }
         info!("### command_series.len(): {}", command_series.len());
+        self.last_command = Some(command_series.clone());
         self.command_history.push(command_series);
     }
 
@@ -413,10 +418,12 @@ impl Editor {
             modifiers: crossterm::event::KeyModifiers::NONE,
             range: None,
         };
-        self.command_history.push(vec![ExecutedCommand {
+        let chunk = vec![ExecutedCommand {
             command_data,
             command,
-        }]);
+        }];
+        self.last_command = Some(chunk.clone());
+        self.command_history.push(chunk);
         self.ex_command_data = "".to_string();
         Ok(())
     }
@@ -599,10 +606,12 @@ impl Editor {
                 command.execute(self)?;
             }
             if command.is_undoable() {
-                self.command_history.push(vec![ExecutedCommand {
+                let chunk = vec![ExecutedCommand {
                     command_data,
                     command,
-                }]);
+                }];
+                self.last_command = Some(chunk.clone());
+                self.command_history.push(chunk);
             }
         } else if !command.is_modeful() && !command.is_reusable() {
             let mut command_chunk: Vec<ExecutedCommand> = Vec::new();
@@ -621,15 +630,18 @@ impl Editor {
                 }
             }
             if command_chunk.len() > 0 {
+                self.last_command = Some(command_chunk.clone());
                 self.command_history.push(command_chunk);
             }
         } else {
             command.execute(self)?;
             if command.is_undoable() {
-                self.command_history.push(vec![ExecutedCommand {
+                let chunk = vec![ExecutedCommand {
                     command_data,
                     command,
-                }]);
+                }];
+                self.last_command = Some(chunk.clone());
+                self.command_history.push(chunk);
             }
         }
         Ok(())
@@ -646,6 +658,37 @@ impl Editor {
         } else {
             Ok(())
         }
+    }
+
+    pub fn repeat_last_command(&mut self) -> GenericResult<()> {
+        if let Some(last_chunk_from_editor_state) = self.last_command.clone() {
+            let mut new_chunk_for_history_and_next_repeat: Vec<ExecutedCommand> = Vec::new();
+            for executed_command_orig_data in last_chunk_from_editor_state.into_iter() {
+                let mut command_instance_for_iteration = executed_command_orig_data.command;
+                let repeat_count = executed_command_orig_data.command_data.count;
+
+                for _i in 0..repeat_count {
+                    match command_instance_for_iteration.redo(self)? {
+                        Some(next_command_state) => {
+                            command_instance_for_iteration = next_command_state;
+                        }
+                        None => {
+                            // command_instance_for_iteration was (presumably) mutated by redo(), so we continue to use it.
+                        }
+                    }
+                }
+                // After N redos, command_instance_for_iteration holds the final state of this command part
+                new_chunk_for_history_and_next_repeat.push(ExecutedCommand {
+                    command_data: executed_command_orig_data.command_data, // Store original CommandData (with its count)
+                    command: command_instance_for_iteration,
+                });
+            }
+            if !new_chunk_for_history_and_next_repeat.is_empty() {
+                self.last_command = Some(new_chunk_for_history_and_next_repeat.clone());
+                self.command_history.push(new_chunk_for_history_and_next_repeat);
+            }
+        }
+        Ok(())
     }
 
     pub fn render(self: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResult<()> {

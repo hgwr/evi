@@ -17,6 +17,7 @@ pub mod paste;
 pub mod print;
 pub mod replace;
 pub mod replace_char;
+pub mod repeat;
 pub mod search;
 pub mod substitute;
 pub mod undo;

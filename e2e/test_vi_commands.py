@@ -36,6 +36,31 @@ def test_undo():
     assert result.strip() == 'hello'
 
 
+def test_repeat_command():
+    result = run_commands(['x', '.', '.'], initial_content='abc\n')
+    assert result.strip() == ''
+
+
+def test_undo_then_repeat():
+    result = run_commands(['x', 'u', '.'], initial_content='abc\n')
+    assert result.strip() == 'bc'
+
+
+def test_repeat_delete_char_with_count():
+    result = run_commands(['3', 'x', '.'], initial_content='abcdef\n')
+    assert result.strip() == ''
+
+
+def test_repeat_insert():
+    result = run_commands(['i', 'abc', '\x1b', '.'], initial_content='')
+    assert result.strip() == 'abcabc'
+
+
+def test_repeat_delete_word():
+    result = run_commands(['d', 'w', '.'], initial_content='one two three\n')
+    assert result.strip() == 'three'
+
+
 def test_write_quit_ZZ():
     result = run_commands(['i', 'done', '\x1b', 'ZZ'], exit_cmd=None)
     assert result.strip() == 'done'

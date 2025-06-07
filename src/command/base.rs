@@ -4,7 +4,27 @@ use crossterm::event::{KeyCode, KeyModifiers};
 
 use crate::{editor::Editor, generic_error::GenericResult};
 
-pub trait Command {
+pub trait CommandClone {
+    fn clone_box(&self) -> Box<dyn Command>;
+}
+
+impl<T> CommandClone for T
+where
+    T: 'static + Command + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Command> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn Command> {
+    fn clone(&self) -> Box<dyn Command> {
+        self.as_ref().clone_box()
+    }
+}
+
+pub trait Command: CommandClone {
+    // Executes the command, performing the primary action.
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()>;
 
     fn is_reusable(&self) -> bool {
@@ -65,6 +85,7 @@ pub struct CommandData {
     pub range: Option<JumpCommandData>,
 }
 
+#[derive(Clone)]
 pub struct ExecutedCommand {
     pub command_data: CommandData,
     pub command: Box<dyn Command>,

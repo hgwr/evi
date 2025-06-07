@@ -6,8 +6,9 @@ use crate::data::LineAddressType;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
+#[derive(Clone)]
 pub struct GoToLineCommand {
-    pub line_address: LineAddressType
+    pub line_address: LineAddressType,
 }
 
 impl Command for GoToLineCommand {

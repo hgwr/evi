@@ -8,6 +8,7 @@ use crate::editor::Editor;
 use crate::ex::parser::Parser;
 use crate::generic_error::{GenericError, GenericResult};
 
+#[derive(Clone)]
 pub struct GlobalCommand {
     pub line_range: LineRange,
     pub pattern: String,

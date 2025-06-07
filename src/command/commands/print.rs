@@ -5,9 +5,10 @@ use crate::data::LineRange;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
+#[derive(Clone)]
 pub struct PrintCommand {
     #[cfg_attr(not(test), allow(dead_code))]
-    pub line_range: LineRange
+    pub line_range: LineRange,
 }
 
 impl Command for PrintCommand {

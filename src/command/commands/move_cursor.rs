@@ -5,6 +5,7 @@ use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 use crate::util::get_char_width;
 
+#[derive(Clone)]
 pub struct ForwardChar;
 impl Command for ForwardChar {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -36,6 +37,7 @@ impl Command for ForwardChar {
     }
 }
 
+#[derive(Clone)]
 pub struct BackwardChar;
 impl Command for BackwardChar {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -66,6 +68,7 @@ impl Command for BackwardChar {
     }
 }
 
+#[derive(Clone)]
 pub struct MoveBeginningOfLine;
 impl Command for MoveBeginningOfLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -81,6 +84,7 @@ impl Command for MoveBeginningOfLine {
     }
 }
 
+#[derive(Clone)]
 pub struct MoveEndOfLine;
 impl Command for MoveEndOfLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -98,6 +102,7 @@ impl Command for MoveEndOfLine {
     }
 }
 
+#[derive(Clone)]
 pub struct NextLine;
 impl Command for NextLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -137,6 +142,7 @@ impl Command for NextLine {
     }
 }
 
+#[derive(Clone)]
 pub struct PreviousLine;
 impl Command for PreviousLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -180,6 +186,7 @@ impl Command for PreviousLine {
     }
 }
 
+#[derive(Clone)]
 pub struct ForwardWord;
 impl Command for ForwardWord {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -227,6 +234,7 @@ impl Command for ForwardWord {
     }
 }
 
+#[derive(Clone)]
 pub struct BackwardWord;
 impl Command for BackwardWord {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {

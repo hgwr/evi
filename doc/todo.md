@@ -12,7 +12,7 @@ This document lists vi and ex commands from the POSIX vi specification that are 
 - ~~`r`, `R` – replace character or enter replace mode~~
 - `J` – join lines
 - ~~`/`, `?`, `n`, `N` – search motions~~
-- `f`, `F`, `t`, `T` – find character on the current line
+- ~~`f`, `F`, `t`, `T` – find character on the current line~~
 - Visual mode commands such as `v`, `V`
 - Marks (`m`{char}) and jumps (`'{char}`)
 - Macros (`@`{register})
@@ -28,7 +28,7 @@ The ex commands described in `doc/spec.md` but not yet implemented include:
 - `:m` and `:co` – move or copy lines
 - `:set number`, `:set nonumber`, `:set nu`, `:set nonu`
 - `:#`, `:=`, `:.=` and `:/pattern/=` – line number related commands
-- Global search commands `:g` and `:g!`
+- ~~Global search commands `:g` and `:g!`~~
 - Line range addresses using patterns or relative offsets (`+`, `-`) are not handled
 - Printing with `:p` and related range forms (implementation pending)
 

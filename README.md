@@ -4,9 +4,9 @@ evi is a vi clone editor written in Rust. It is a simple and lightweight text ed
 
 ## Features
 
-- [ ] Basic vi commands
-- [ ] Ex commands
-- [ ] Search and replace
+- [x] Basic vi commands
+- [x] Ex commands
+- [x] Search and replace
 - [ ] Unicode support
 - [ ] Syntax highlighting
 

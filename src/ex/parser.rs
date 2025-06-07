@@ -208,7 +208,7 @@ impl Parser {
                     if let MyOption::Some(token) = self.pop() {
                         token.lexeme
                     } else {
-                        String::new()
+                        return Err(self.error("pattern expected"));
                     }
                 } else {
                     return Err(self.error("pattern expected"));

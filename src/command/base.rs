@@ -24,6 +24,7 @@ impl Clone for Box<dyn Command> {
 }
 
 pub trait Command: CommandClone {
+    // Executes the command, performing the primary action.
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()>;
 
     fn is_reusable(&self) -> bool {

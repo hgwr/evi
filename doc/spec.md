@@ -56,7 +56,22 @@ The following vi commands are currently implemented:
 - `ZZ` — write the file if modified and exit
 - `:` — enter ex command mode
 
-Other POSIX vi commands such as `I`, `A`, `J`, visual mode, marks and macros are not yet implemented.
+### POSIX vi compatibility
+
+evi aims to eventually implement the full set of commands described in the
+POSIX \`vi\` specification.  The current focus is on a small core that can be
+tested end to end.  The following subset of standard commands is used as the
+target for the E2E tests described in this repository:
+
+- Cursor motion commands: `h`, `j`, `k`, `l`, `0`, `$`, `w`, `b`.
+- Insert and append commands: `i`, `a`, `o`, `O`, `I`, `A`.
+- Deletion: `x`, `dd`, `dw`.
+- Searching: `/pattern`, `?pattern`, `n`, `N`.
+- Undo and redo: `u`, `Ctrl-r`.
+- File information: `Ctrl-g`, and `ZZ` to write and exit.
+
+Additional commands such as marks, macros and visual mode are not yet
+implemented.
 
 ## ex commands
 

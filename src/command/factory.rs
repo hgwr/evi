@@ -148,6 +148,16 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             ..
         } => Box::new(Paste { before: true, ..Default::default() }),
 
+        CommandData {
+            key_code: KeyCode::Char('r'),
+            ..
+        } => Box::new(super::commands::replace_char::ReplaceChar {}),
+
+        CommandData {
+            key_code: KeyCode::Char('R'),
+            ..
+        } => Box::new(super::commands::replace::Replace::default()),
+
         // undo command
         CommandData {
             key_code: KeyCode::Char('u'),

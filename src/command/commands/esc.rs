@@ -7,7 +7,7 @@ use crate::generic_error::GenericResult;
 pub struct Esc;
 impl Command for Esc {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
-        if editor.is_insert_mode() {
+        if editor.is_insert_mode() || editor.is_replace_mode() || editor.is_replace_char_mode() {
             editor.set_command_mode();
         } else {
             editor.set_command_mode();

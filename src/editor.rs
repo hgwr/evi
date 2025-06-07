@@ -55,6 +55,11 @@ pub enum Mode {
     Insert,
     Replace,
     ReplaceChar,
+    FindChar {
+        direction: SearchDirection,
+        inclusive: bool,
+        count: usize,
+    },
     ExCommand,
     Search(SearchDirection),
 }
@@ -63,6 +68,13 @@ pub enum Mode {
 pub enum SearchDirection {
     Forward,
     Backward,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FindCharInfo {
+    pub direction: SearchDirection,
+    pub inclusive: bool,
+    pub target: char,
 }
 
 pub struct Editor {
@@ -85,6 +97,7 @@ pub struct Editor {
     pub search_query: String,
     pub last_search_pattern: Option<String>,
     pub last_search_direction: Option<SearchDirection>,
+    pub last_find: Option<FindCharInfo>,
     pub pending_replace_char_count: usize,
 }
 
@@ -113,6 +126,7 @@ impl Editor {
             search_query: String::new(),
             last_search_pattern: None,
             last_search_direction: None,
+            last_find: None,
             pending_replace_char_count: 1,
         }
     }
@@ -179,6 +193,10 @@ impl Editor {
                 self.mode = Mode::Command;
                 self.status_line = "".to_string();
                 self.pending_replace_char_count = 1;
+            }
+            Mode::FindChar { .. } => {
+                self.mode = Mode::Command;
+                self.status_line = "".to_string();
             }
             Mode::Search(_) => {
                 self.mode = Mode::Command;
@@ -270,6 +288,11 @@ impl Editor {
                 self.last_input_string = String::new();
                 self.search_query.clear();
             }
+            Mode::FindChar { .. } => {
+                self.mode = Mode::Insert;
+                self.status_line = "-- INSERT --".to_string();
+                self.last_input_string = String::new();
+            }
         }
     }
 
@@ -295,6 +318,11 @@ impl Editor {
                 self.last_input_string = String::new();
                 self.search_query.clear();
             }
+            Mode::FindChar { .. } => {
+                self.mode = Mode::Replace;
+                self.status_line = "-- REPLACE --".to_string();
+                self.last_input_string = String::new();
+            }
         }
     }
 
@@ -305,6 +333,23 @@ impl Editor {
     pub fn set_replace_char_mode(&mut self) {
         self.mode = Mode::ReplaceChar;
         self.last_input_string = String::new();
+    }
+
+    pub fn set_find_char_mode(
+        &mut self,
+        direction: SearchDirection,
+        inclusive: bool,
+        count: usize,
+    ) {
+        self.mode = Mode::FindChar {
+            direction,
+            inclusive,
+            count,
+        };
+    }
+
+    pub fn is_find_char_mode(&self) -> bool {
+        matches!(self.mode, Mode::FindChar { .. })
     }
 
     pub fn is_replace_mode(&self) -> bool {
@@ -722,6 +767,108 @@ impl Editor {
         Ok(())
     }
 
+    fn move_cursor_within_line(&mut self, col: usize) -> GenericResult<()> {
+        let current = self.cursor_position_in_buffer.col;
+        if col > current {
+            let mut f = crate::command::commands::move_cursor::ForwardChar {};
+            for _ in 0..(col - current) {
+                f.execute(self)?;
+            }
+        } else if col < current {
+            let mut b = crate::command::commands::move_cursor::BackwardChar {};
+            for _ in 0..(current - col) {
+                b.execute(self)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn find_char_in_current_line(
+        &mut self,
+        direction: SearchDirection,
+        inclusive: bool,
+        count: usize,
+        target: char,
+    ) -> GenericResult<()> {
+        if let Some(line) = self.buffer.lines.get(self.cursor_position_in_buffer.row) {
+            let chars: Vec<char> = line.chars().collect();
+            let mut idx = self.cursor_position_in_buffer.col;
+            match direction {
+                SearchDirection::Forward => {
+                    idx += 1;
+                    let mut remaining = count;
+                    while idx < chars.len() {
+                        if chars[idx] == target {
+                            remaining -= 1;
+                            if remaining == 0 {
+                                let dest = if inclusive { idx } else { idx - 1 };
+                                self.move_cursor_within_line(dest)?;
+                                return Ok(());
+                            }
+                        }
+                        idx += 1;
+                    }
+                    self.display_visual_bell()?;
+                }
+                SearchDirection::Backward => {
+                    if idx > 0 {
+                        idx -= 1;
+                        let mut remaining = count;
+                        loop {
+                            if chars[idx] == target {
+                                remaining -= 1;
+                                if remaining == 0 {
+                                    let dest = if inclusive { idx } else { idx + 1 };
+                                    self.move_cursor_within_line(dest)?;
+                                    return Ok(());
+                                }
+                            }
+                            if idx == 0 {
+                                break;
+                            }
+                            idx -= 1;
+                        }
+                    }
+                    self.display_visual_bell()?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn execute_find_char(&mut self, c: char) -> GenericResult<()> {
+        if let Mode::FindChar {
+            direction,
+            inclusive,
+            count,
+        } = self.mode
+        {
+            self.find_char_in_current_line(direction, inclusive, count, c)?;
+            self.last_find = Some(FindCharInfo {
+                direction,
+                inclusive,
+                target: c,
+            });
+            self.set_command_mode();
+        }
+        Ok(())
+    }
+
+    pub fn repeat_find_char(&mut self) -> GenericResult<()> {
+        if let Some(info) = self.last_find {
+            if info.direction == SearchDirection::Backward && !info.inclusive {
+                if self.cursor_position_in_buffer.col > 0 {
+                    let mut b = crate::command::commands::move_cursor::BackwardChar {};
+                    b.execute(self)?;
+                }
+            }
+            self.find_char_in_current_line(info.direction, info.inclusive, 1, info.target)?;
+        } else {
+            self.display_visual_bell()?;
+        }
+        Ok(())
+    }
+
     pub fn append_new_line(&mut self) -> GenericResult<()> {
         let rest_of_line = self.buffer.lines[self.cursor_position_in_buffer.row]
             .chars()
@@ -942,5 +1089,50 @@ mod tests {
         };
         editor.execute_command(cmd).unwrap();
         assert_eq!(editor.buffer.lines[2], "hello world");
+    }
+
+    #[test]
+    fn test_find_char_and_repeat() {
+        use crate::command::base::CommandData;
+        use crossterm::event::KeyCode;
+
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["abcabcabc".to_string()];
+
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('f'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: None,
+        };
+        editor.execute_command(cmd).unwrap();
+        editor.execute_find_char('c').unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 2);
+        editor.repeat_find_char().unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 5);
+    }
+
+    #[test]
+    fn test_backward_to_char_and_repeat() {
+        use crate::command::base::CommandData;
+        use crossterm::event::KeyCode;
+
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["abcabcabc".to_string()];
+        editor.move_cursor_to(0, 8).unwrap();
+
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('T'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: None,
+        };
+        editor.execute_command(cmd).unwrap();
+        editor.execute_find_char('a').unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 7);
+        editor.repeat_find_char().unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 4);
     }
 }

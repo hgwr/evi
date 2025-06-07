@@ -18,7 +18,7 @@ evi is a lightweight vi clone written in Rust. The project is still a work in pr
 
 ## Building and Testing
 
-Use `cargo build` to compile the editor and `cargo test` to run the provided test suite. All tests should pass.
+Use `cargo build` to compile the editor and `cargo test` to run the provided test suite. For more detailed output from tests (including logs or `println!` statements), you can use `cargo test -- --nocapture`. All tests should pass.
 
 ## Learning the Codebase
 

@@ -41,6 +41,7 @@ def test_delete_line_undo():
 
 def test_delete_line_repeat():
     result = run_commands([':1d\r', '.'], initial_content='a\nb\n')
+    # Ex commands are not repeatable yet
     assert result.splitlines() == ['b']
 
 
@@ -56,6 +57,7 @@ def test_move_line_undo():
 
 def test_move_line_repeat():
     result = run_commands([':1m5\r', '.'], initial_content='1\n2\n3\n4\n5\n6\n')
+    # Repeat not implemented for :move
     assert result.splitlines() == ['2', '3', '4', '5', '1', '6']
 
 
@@ -71,6 +73,7 @@ def test_copy_line_undo():
 
 def test_copy_line_repeat():
     result = run_commands([':1co5\r', '.'], initial_content='1\n2\n3\n4\n5\n6\n')
+    # Repeat not implemented for :copy
     assert result.splitlines() == ['1', '2', '3', '4', '5', '1', '6']
 
 

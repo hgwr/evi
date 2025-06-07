@@ -16,12 +16,11 @@ impl Command for MoveLines {
         let end = editor.get_line_number_from(&self.line_range.end);
         let mut dest = editor.get_line_number_from(&self.address);
 
-        let mut lines: Vec<String> = Vec::new();
-        for _ in start..=end {
-            if start < editor.buffer.lines.len() {
-                lines.push(editor.buffer.lines.remove(start));
-            }
-        }
+        let lines: Vec<String> = if start <= end && start < editor.buffer.lines.len() {
+            editor.buffer.lines.drain(start..=end).collect()
+        } else {
+            Vec::new()
+        };
 
         if dest > end {
             dest -= lines.len();

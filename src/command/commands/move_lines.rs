@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::cmp;
 
 use crate::command::base::Command;
 use crate::data::{LineAddressType, LineRange, SimpleLineAddressType};
@@ -12,9 +13,20 @@ pub struct MoveLines {
 
 impl Command for MoveLines {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
-        let start = editor.get_line_number_from(&self.line_range.start);
-        let end = editor.get_line_number_from(&self.line_range.end);
-        let (start, end) = if start > end { (end, start) } else { (start, end) };
+        let len = editor.buffer.lines.len();
+        let mut start = editor.get_line_number_from(&self.line_range.start);
+        let mut end = editor.get_line_number_from(&self.line_range.end);
+
+        if len == 0 {
+            return Ok(());
+        }
+
+        start = cmp::min(start, len - 1);
+        end = cmp::min(end, len - 1);
+
+        if start > end {
+            std::mem::swap(&mut start, &mut end);
+        }
         let mut dest = editor.get_line_number_from(&self.address);
 
         let lines: Vec<String> = editor.buffer.lines.drain(start..=end).collect();

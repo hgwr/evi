@@ -36,10 +36,21 @@ def run_commands(commands, initial_content="", exit_cmd=":wq\r"):
         child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
 
         for c in commands:
-            child.send(c)
+            for ch in c:
+                # Use sendcontrol for ESC to avoid pexpect treating it as part
+                # of an "Alt" sequence when followed quickly by another
+                # character.
+                if ch == "\x1b":
+                    child.sendcontrol("[")
+                else:
+                    child.send(ch)
 
         if exit_cmd is not None:
-            child.send(exit_cmd)
+            for ch in exit_cmd:
+                if ch == "\x1b":
+                    child.sendcontrol("[")
+                else:
+                    child.send(ch)
 
         child.expect(pexpect.EOF)
 

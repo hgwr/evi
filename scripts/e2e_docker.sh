@@ -4,7 +4,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Build Docker image
-docker build -f "$REPO_DIR/docker/e2e.Dockerfile" -t evi-e2e "$REPO_DIR"
+PYTEST_ARGS="${*:-e2e --verbose}"
 
 # Run tests inside container
 docker run --rm -v "$REPO_DIR":/evi evi-e2e

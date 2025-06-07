@@ -10,7 +10,7 @@ pub struct PrintCommand {
 }
 
 impl Command for PrintCommand {
-    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+    fn execute(&mut self, _editor: &mut Editor) -> GenericResult<()> {
         // TODO: Implement PrintCommand
         log::info!("PrintCommand execute");
         Ok(())

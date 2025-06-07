@@ -2,11 +2,10 @@ use std::io::Write;
 
 use crossterm::{
     cursor,
-    style::{self, Attribute},
+    style,
     terminal, QueueableCommand,
 };
 use log::info;
-use regex::Regex;
 
 use crate::{
     editor::{Editor, TerminalSize},

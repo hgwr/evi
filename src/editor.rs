@@ -744,7 +744,7 @@ impl Editor {
     pub fn get_line_number_from(&mut self, line_address: &LineAddressType) -> usize {
         let line_number: isize = match line_address {
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::LineNumber(n)) => {
-                let input = (*n as isize);
+                let input = *n as isize;
                 if input == 0 {
                     0
                 } else {
@@ -767,7 +767,7 @@ impl Editor {
             }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::FirstLine, i) => 0 + i,
             crate::data::LineAddressType::Relative(SimpleLineAddressType::LineNumber(n), i) => {
-                (*n as isize) + i
+                *n as isize + i
             }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::CurrentLine, i) => {
                 (self.cursor_position_in_buffer.row as isize) + i
@@ -778,7 +778,7 @@ impl Editor {
             crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
                 (self.buffer.lines.len().saturating_sub(1) as isize) + i
             }
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), i) => {
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), _i) => {
                 // TODO: Implement
                 unimplemented!()
             }

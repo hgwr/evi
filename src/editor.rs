@@ -228,9 +228,6 @@ impl Editor {
                     command_data,
                     Some(last_executed_command.command),
                 );
-                if let Some(last) = self.command_history.last() {
-                    self.last_command = Some(last.clone());
-                }
             } else {
                 panic!("count: {}", count);
             }
@@ -666,12 +663,24 @@ impl Editor {
     pub fn repeat_last_command(&mut self) -> GenericResult<()> {
         if let Some(last_chunk) = self.last_command.clone() {
             let mut new_chunk: Vec<ExecutedCommand> = Vec::new();
-            for mut executed_command in last_chunk.into_iter() {
-                let redo_result = executed_command.command.redo(self)?;
-                new_chunk.push(ExecutedCommand {
-                    command_data: executed_command.command_data,
-                    command: redo_result.unwrap_or(executed_command.command),
-                });
+            for executed_command in last_chunk.into_iter() {
+                let mut command_opt = Some(executed_command.command);
+                let disassemble_data = CommandData {
+                    count: 1,
+                    ..executed_command.command_data
+                };
+                for _ in 0..executed_command.command_data.count {
+                    if let Some(mut command) = command_opt {
+                        let redo_result = command.redo(self)?;
+                        new_chunk.push(ExecutedCommand {
+                            command_data: disassemble_data,
+                            command,
+                        });
+                        command_opt = redo_result;
+                    } else {
+                        break;
+                    }
+                }
             }
             if !new_chunk.is_empty() {
                 self.last_command = Some(new_chunk.clone());

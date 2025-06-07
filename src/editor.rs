@@ -280,6 +280,7 @@ impl Editor {
             Mode::Insert => {
                 self.mode = Mode::Replace;
                 self.status_line = "-- REPLACE --".to_string();
+                self.last_input_string = String::new();
             }
             Mode::Replace => {}
             Mode::ExCommand => {

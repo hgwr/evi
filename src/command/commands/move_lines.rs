@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use crate::command::base::Command;
-use crate::data::{LineAddressType, LineRange};
+use crate::data::{LineAddressType, LineRange, SimpleLineAddressType};
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
@@ -27,8 +27,21 @@ impl Command for MoveLines {
             dest -= lines.len();
         }
 
+        if dest >= editor.buffer.lines.len() {
+            dest = editor.buffer.lines.len().saturating_sub(1);
+        }
+
+        let base = if matches!(
+            self.address,
+            LineAddressType::Absolute(SimpleLineAddressType::LineNumber(0))
+        ) {
+            dest
+        } else {
+            dest + 1
+        };
+
         for (i, line) in lines.into_iter().enumerate() {
-            editor.buffer.lines.insert(dest + 1 + i, line);
+            editor.buffer.lines.insert(base + i, line);
         }
         Ok(())
     }

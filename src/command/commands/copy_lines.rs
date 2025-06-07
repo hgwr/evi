@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use crate::command::base::Command;
-use crate::data::{LineAddressType, LineRange};
+use crate::data::{LineAddressType, LineRange, SimpleLineAddressType};
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
@@ -14,7 +14,11 @@ impl Command for CopyLines {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let start = editor.get_line_number_from(&self.line_range.start);
         let end = editor.get_line_number_from(&self.line_range.end);
-        let dest = editor.get_line_number_from(&self.address);
+        let mut dest = editor.get_line_number_from(&self.address);
+
+        if dest >= editor.buffer.lines.len() {
+            dest = editor.buffer.lines.len().saturating_sub(1);
+        }
 
         let mut lines: Vec<String> = Vec::new();
         for i in start..=end {
@@ -23,8 +27,17 @@ impl Command for CopyLines {
             }
         }
 
+        let base = if matches!(
+            self.address,
+            LineAddressType::Absolute(SimpleLineAddressType::LineNumber(0))
+        ) {
+            dest
+        } else {
+            dest + 1
+        };
+
         for (i, line) in lines.into_iter().enumerate() {
-            editor.buffer.lines.insert(dest + 1 + i, line);
+            editor.buffer.lines.insert(base + i, line);
         }
         Ok(())
     }

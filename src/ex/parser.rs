@@ -214,19 +214,23 @@ impl Parser {
         &mut self,
         line_range: &LineRange,
     ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
-        if self.accept(TokenType::Command, "co") || self.accept(TokenType::Command, "t") {
+        if self.accept(TokenType::Command, "co") {
             self.pop();
-            if let MyOption::Some(address) = self.line_address()? {
-                let cp = copy_lines::CopyLines {
-                    line_range: line_range.clone(),
-                    address,
-                };
-                return Ok(MyOption::Some(Box::new(cp)));
-            } else {
-                return Err(self.error("line address expected"));
-            }
+        } else if self.accept(TokenType::Command, "t") {
+            self.pop();
+        } else {
+            return Ok(MyOption::None);
         }
-        Ok(MyOption::None)
+
+        if let MyOption::Some(address) = self.line_address()? {
+            let cp = copy_lines::CopyLines {
+                line_range: line_range.clone(),
+                address,
+            };
+            return Ok(MyOption::Some(Box::new(cp)));
+        } else {
+            return Err(self.error("line address expected"));
+        }
     }
 
     fn global_command(

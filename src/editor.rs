@@ -664,11 +664,14 @@ impl Editor {
         if let Some(last_chunk) = self.last_command.clone() {
             let mut new_chunk: Vec<ExecutedCommand> = Vec::new();
             for executed_command in last_chunk.into_iter() {
-                let mut command = executed_command.command;
-                command.redo(self)?;
+                let mut command_to_act_on = executed_command.command;
+                let command_for_next_repeat = match command_to_act_on.redo(self)? {
+                    Some(next_command_state) => next_command_state,
+                    None => command_to_act_on, 
+                };
                 new_chunk.push(ExecutedCommand {
                     command_data: executed_command.command_data,
-                    command,
+                    command: command_for_next_repeat,
                 });
             }
             if !new_chunk.is_empty() {

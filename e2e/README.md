@@ -27,3 +27,13 @@ Specific tests can be selected in the usual `pytest` ways, e.g.:
 ```bash
 pytest e2e/test_vi_commands.py::test_delete_word
 ```
+
+## Running the tests in Docker
+
+The repository provides a Docker setup for running the e2e tests in an isolated environment. Build the image and execute the tests using:
+
+```bash
+scripts/e2e_docker.sh
+```
+
+This script builds the Docker image based on the official `rust` image, mounts the project directory into the container, and runs `cargo build --verbose` followed by `pytest e2e --verbose`. The Docker image installs the Python dependencies in a virtual environment to avoid system package conflicts.

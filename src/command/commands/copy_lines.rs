@@ -17,11 +17,13 @@ impl Command for CopyLines {
         let dest = editor.get_line_number_from(&self.address);
 
         let mut lines: Vec<String> = Vec::new();
-        for i in start..=end {
-            if i < editor.buffer.lines.len() {
-                lines.push(editor.buffer.lines[i].clone());
-            }
+        let start = editor.get_line_number_from(&self.line_range.start);
+        let end = editor.get_line_number_from(&self.line_range.end);
+
+        if start > end {
+            return Err(From::from("Invalid range"));
         }
+
 
         for (i, line) in lines.into_iter().enumerate() {
             editor.buffer.lines.insert(dest + 1 + i, line);

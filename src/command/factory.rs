@@ -5,6 +5,7 @@ use crate::command::commands::no_op_command::NoOpCommand;
 use crossterm::event::KeyCode;
 
 use super::commands::append::Append;
+use super::commands::change::Change;
 use super::commands::delete::{Delete, DeleteChar};
 use super::commands::paste::Paste;
 use super::commands::insert::Insert;
@@ -115,6 +116,15 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             range,
             ..
         } => Box::new(Delete {
+            jump_command_data_opt: range.clone(),
+            ..Default::default()
+        }),
+
+        CommandData {
+            key_code: KeyCode::Char('c'),
+            range,
+            ..
+        } => Box::new(Change {
             jump_command_data_opt: range.clone(),
             ..Default::default()
         }),

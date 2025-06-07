@@ -289,7 +289,13 @@ impl Editor {
                 self.mode = Mode::Replace;
                 self.status_line = "-- REPLACE --".to_string();
             }
-    #[allow(dead_code)]
+            Mode::Search(_) => {
+                self.mode = Mode::Replace;
+                self.status_line = "-- REPLACE --".to_string();
+                self.last_input_string = String::new();
+                self.search_query.clear();
+            }
+        }
     }
 
     pub fn set_replace_char_mode_with_count(&mut self, count: usize) {

@@ -104,7 +104,13 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                             editor.status_line = "".to_string();
                         }
                         event::KeyCode::Char(c) => {
-                            editor.replace_char_at_cursor(c)?;
+                            for i in 0..editor.pending_replace_char_count {
+                                if i + 1 == editor.pending_replace_char_count {
+                                    editor.replace_char_at_cursor(c)?;
+                                } else {
+                                    editor.replace_char_and_move(c)?;
+                                }
+                            }
                             editor.set_command_mode();
                         }
                         _ => {}

@@ -152,7 +152,9 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('r'),
             modifiers: KeyModifiers::NONE,
             ..
-        } => Box::new(super::commands::replace_char::ReplaceChar {}),
+        } => Box::new(super::commands::replace_char::ReplaceChar {
+            count: command_data.count,
+        }),
 
         CommandData {
             key_code: KeyCode::Char('R'),

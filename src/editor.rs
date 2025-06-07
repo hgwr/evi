@@ -85,6 +85,7 @@ pub struct Editor {
     pub search_query: String,
     pub last_search_pattern: Option<String>,
     pub last_search_direction: Option<SearchDirection>,
+    pub pending_replace_char_count: usize,
 }
 
 impl Editor {
@@ -112,6 +113,7 @@ impl Editor {
             search_query: String::new(),
             last_search_pattern: None,
             last_search_direction: None,
+            pending_replace_char_count: 1,
         }
     }
 
@@ -176,6 +178,7 @@ impl Editor {
             Mode::ReplaceChar => {
                 self.mode = Mode::Command;
                 self.status_line = "".to_string();
+                self.pending_replace_char_count = 1;
             }
             Mode::Search(_) => {
                 self.mode = Mode::Command;
@@ -286,6 +289,11 @@ impl Editor {
                 self.mode = Mode::Replace;
                 self.status_line = "-- REPLACE --".to_string();
             }
+        self.set_replace_char_mode_with_count(1);
+    }
+
+    pub fn set_replace_char_mode_with_count(&mut self, count: usize) {
+        self.pending_replace_char_count = count;
             Mode::Search(_) => {
                 self.mode = Mode::Replace;
                 self.status_line = "-- REPLACE --".to_string();

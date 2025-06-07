@@ -1,5 +1,6 @@
 pub mod append;
 pub mod change;
+pub mod copy_lines;
 pub mod delete;
 pub mod esc;
 pub mod exit;
@@ -9,6 +10,7 @@ pub mod go_to_line;
 pub mod insert;
 pub mod misc;
 pub mod move_cursor;
+pub mod move_lines;
 pub mod no_op_command;
 pub mod open_line;
 pub mod paste;

@@ -7,11 +7,12 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use super::commands::append::Append;
 use super::commands::change::Change;
 use super::commands::delete::{Delete, DeleteChar};
-use super::commands::paste::Paste;
+use super::commands::find_char::{FindChar, RepeatFindChar};
 use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
-use super::commands::search::RepeatSearch;
 use super::commands::open_line::OpenLine;
+use super::commands::paste::Paste;
+use super::commands::search::RepeatSearch;
 use super::commands::undo::Undo;
 use super::commands::yank::Yank;
 
@@ -79,6 +80,42 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
         } => Box::new(RepeatSearch {
             same_direction: false,
         }),
+        CommandData {
+            key_code: KeyCode::Char('f'),
+            ..
+        } => Box::new(FindChar {
+            count: command_data.count,
+            direction: crate::editor::SearchDirection::Forward,
+            inclusive: true,
+        }),
+        CommandData {
+            key_code: KeyCode::Char('F'),
+            ..
+        } => Box::new(FindChar {
+            count: command_data.count,
+            direction: crate::editor::SearchDirection::Backward,
+            inclusive: true,
+        }),
+        CommandData {
+            key_code: KeyCode::Char('t'),
+            ..
+        } => Box::new(FindChar {
+            count: command_data.count,
+            direction: crate::editor::SearchDirection::Forward,
+            inclusive: false,
+        }),
+        CommandData {
+            key_code: KeyCode::Char('T'),
+            ..
+        } => Box::new(FindChar {
+            count: command_data.count,
+            direction: crate::editor::SearchDirection::Backward,
+            inclusive: false,
+        }),
+        CommandData {
+            key_code: KeyCode::Char(';'),
+            ..
+        } => Box::new(RepeatFindChar {}),
 
         // insert commands
         CommandData {
@@ -146,7 +183,10 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
         CommandData {
             key_code: KeyCode::Char('P'),
             ..
-        } => Box::new(Paste { before: true, ..Default::default() }),
+        } => Box::new(Paste {
+            before: true,
+            ..Default::default()
+        }),
 
         CommandData {
             key_code: KeyCode::Char('r'),

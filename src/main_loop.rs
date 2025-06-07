@@ -97,6 +97,17 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                             editor.append_search_query(key_data);
                         }
                     }
+                } else if editor.is_find_char_mode() {
+                    match key_event.code {
+                        event::KeyCode::Esc => {
+                            editor.set_command_mode();
+                            editor.status_line = "".to_string();
+                        }
+                        event::KeyCode::Char(c) => {
+                            editor.execute_find_char(c)?;
+                        }
+                        _ => {}
+                    }
                 } else if editor.is_replace_char_mode() {
                     match key_event.code {
                         event::KeyCode::Esc => {

@@ -1,16 +1,45 @@
-# Build and Test
+# `evi` Build and Test Instructions
 
-## for evi Rust codes
+This document describes the commands required to build the `evi` Rust project, run unit tests, and run end-to-end (e2e) tests.
 
-    cargo build --verbose
-    cargo test --verbose
+## Rust Project (`evi`)
 
-## for e2e tests
+### Build
 
-Install e2e test requirements.
+To compile the `evi` application:
 
-    pip install -r e2e/requirements.txt
+```sh
+cargo build --verbose
+```
 
-Run e2e tests.
+### Unit Testing
 
-    pytest e2e --verbose
+To run unit tests for the `evi` application:
+
+```sh
+cargo test --verbose
+```
+
+## End-to-end (e2e) Testing
+
+The e2e tests are written in Python and use `pytest`.
+
+### Prerequisites
+
+Make sure you have Python and pip installed.
+
+### Install dependencies
+
+Install the Python dependencies required for e2e testing:
+
+```sh
+pip install -r e2e/requirements.txt
+```
+
+### Run e2e tests
+
+Run e2e tests:
+
+```sh
+pytest e2e --verbose
+```

@@ -20,12 +20,10 @@ impl Command for CopyLines {
             dest = editor.buffer.lines.len().saturating_sub(1);
         }
 
-        let mut lines: Vec<String> = Vec::new();
-        for i in start..=end {
-            if i < editor.buffer.lines.len() {
-                lines.push(editor.buffer.lines[i].clone());
-            }
-        }
+        let lines: Vec<String> = editor.buffer.lines[start..=end]
+            .iter()
+            .cloned()
+            .collect();
 
         let base = if matches!(
             self.address,

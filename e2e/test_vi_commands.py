@@ -28,7 +28,7 @@ def test_open_line_above_undo():
 
 def test_open_line_above_repeat():
     result = run_commands(['O', 'first', '\x1b', '.', '\x1b'], initial_content='second\n')
-    # Repeat currently leaves the buffer unchanged
+    # TODO: repeating open line should insert another line but is not implemented yet
     assert result.splitlines() == ['second']
 
 
@@ -59,7 +59,7 @@ def test_search_forward_delete_line_undo():
 
 def test_search_forward_delete_line_repeat():
     result = run_commands(['/bar\r', 'dd', '.'], initial_content='foo\nbar\nbaz\n')
-    # Repeat of delete after search is not implemented
+    # TODO: repeating delete after search should remove the next line but is not implemented
     assert result.splitlines() == ['foo', 'baz']
 
 

@@ -20,3 +20,12 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    - name: Install e2e test requirements
+      run: pip install -r e2e/requirements.txt
+    - name: Build evi for e2e tests
+      run: cargo build --verbose
+    - name: Run e2e tests
+      run: pytest e2e --verbose

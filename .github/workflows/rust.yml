@@ -32,7 +32,5 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Install e2e test requirements
       run: pip install -r e2e/requirements.txt
-    - name: Build evi for e2e tests
-      run: cargo build --verbose
     - name: Run e2e tests
       run: pytest e2e --verbose

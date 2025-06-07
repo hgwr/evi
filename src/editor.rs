@@ -327,6 +327,7 @@ impl Editor {
     }
 
     pub fn set_replace_char_mode_with_count(&mut self, count: usize) {
+        self.set_replace_char_mode();
         self.pending_replace_char_count = count;
     }
 

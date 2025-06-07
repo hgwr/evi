@@ -297,6 +297,7 @@ impl Editor {
 
     pub fn set_replace_char_mode(&mut self) {
         self.mode = Mode::ReplaceChar;
+        self.status_line = "-- REPLACE CHAR --".to_string();
         self.last_input_string = String::new();
     }
 

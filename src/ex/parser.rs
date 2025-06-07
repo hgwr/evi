@@ -194,7 +194,7 @@ impl Parser {
         if self.accept(TokenType::Command, "g") {
             self.pop();
             let mut invert = false;
-            if self.accept(TokenType::Symbol, "!") || self.accept(TokenType::Command, "!") {
+            if self.accept(TokenType::Symbol, "!") {
                 self.pop();
                 invert = true;
             }

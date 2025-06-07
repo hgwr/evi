@@ -89,6 +89,8 @@ impl Command for CopyLines {
             if idx < editor.buffer.lines.len() {
                 let end = (idx + self.copied_len).min(editor.buffer.lines.len());
                 editor.buffer.lines.drain(idx..end);
+            }
+        }
         Ok(())
     }
 

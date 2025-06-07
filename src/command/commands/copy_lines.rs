@@ -21,7 +21,9 @@ impl Command for CopyLines {
             dest = editor.buffer.lines.len().saturating_sub(1);
         }
 
-        editor
+        let base = if editor.buffer.lines.is_empty() {
+            0
+        } else if matches!(
             .buffer
             .lines
             .splice(base..base, lines.into_iter());

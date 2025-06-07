@@ -26,7 +26,9 @@ impl Command for MoveLines {
             dest = editor.buffer.lines.len().saturating_sub(1);
         }
 
-        let base = if matches!(
+        let base = if editor.buffer.lines.is_empty() {
+            0
+        } else if matches!(
             self.address,
             LineAddressType::Absolute(SimpleLineAddressType::LineNumber(0))
         ) {

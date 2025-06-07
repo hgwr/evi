@@ -4,6 +4,7 @@ pub mod delete;
 pub mod esc;
 pub mod exit;
 pub mod find_char;
+pub mod global;
 pub mod go_to_line;
 pub mod insert;
 pub mod misc;

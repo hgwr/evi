@@ -23,7 +23,17 @@ def run_commands(commands, initial_content="", exit_cmd=":wq\r"):
             env=cast(os._Environ[str], env),
             encoding="utf-8"
         )
-        child.delaybeforesend = 0.05
+        # `pexpect` treats an ESC byte that is immediately followed by another
+        # character as an "Alt" modified key.  When the delay between sending
+        # commands is too small some operating systems (notably macOS) merge
+        # ``ESC`` and the following character into a single event.  This causes
+        # the editor to stay in insert mode and the tests to time out waiting
+        # for the process to exit.  A slightly longer delay is therefore used
+        # to ensure that ``ESC`` is recognised correctly across platforms.
+        #
+        # The value can be overridden using ``EVI_DELAY_BEFORE_SEND`` for
+        # experimentation, but defaults to 0.1 seconds.
+        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
 
         for c in commands:
             child.send(c)

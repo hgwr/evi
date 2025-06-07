@@ -2,7 +2,7 @@ use crate::command::base::{Command, CommandData, JumpCommandData};
 use crate::command::commands::exit::ExitCommand;
 use crate::command::commands::move_cursor::*;
 use crate::command::commands::no_op_command::NoOpCommand;
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyModifiers};
 
 use super::commands::append::Append;
 use super::commands::change::Change;
@@ -147,6 +147,18 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('P'),
             ..
         } => Box::new(Paste { before: true, ..Default::default() }),
+
+        CommandData {
+            key_code: KeyCode::Char('r'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Box::new(super::commands::replace_char::ReplaceChar {}),
+
+        CommandData {
+            key_code: KeyCode::Char('R'),
+            modifiers: KeyModifiers::NONE,
+            ..
+        } => Box::new(super::commands::replace::Replace::default()),
 
         // undo command
         CommandData {

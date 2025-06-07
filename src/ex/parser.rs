@@ -191,21 +191,26 @@ impl Parser {
         Ok(MyOption::None)
     }
 
+    fn destination_address(&mut self) -> Result<LineAddressType, GenericError> {
+        if let MyOption::Some(address) = self.line_address()? {
+            Ok(address)
+        } else {
+            Err(self.error("line address expected"))
+        }
+    }
+
     fn move_command(
         &mut self,
         line_range: &LineRange,
     ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
         if self.accept(TokenType::Command, "m") {
             self.pop();
-            if let MyOption::Some(address) = self.line_address()? {
-                let mv = move_lines::MoveLines {
-                    line_range: line_range.clone(),
-                    address,
-                };
-                return Ok(MyOption::Some(Box::new(mv)));
-            } else {
-                return Err(self.error("line address expected"));
-            }
+            let address = self.destination_address()?;
+            let mv = move_lines::MoveLines {
+                line_range: line_range.clone(),
+                address,
+            };
+            return Ok(MyOption::Some(Box::new(mv)));
         }
         Ok(MyOption::None)
     }
@@ -221,16 +226,12 @@ impl Parser {
         } else {
             return Ok(MyOption::None);
         }
-
-        if let MyOption::Some(address) = self.line_address()? {
-            let cp = copy_lines::CopyLines {
-                line_range: line_range.clone(),
-                address,
-            };
-            return Ok(MyOption::Some(Box::new(cp)));
-        } else {
-            return Err(self.error("line address expected"));
-        }
+        let address = self.destination_address()?;
+        let cp = copy_lines::CopyLines {
+            line_range: line_range.clone(),
+            address,
+        };
+        return Ok(MyOption::Some(Box::new(cp)));
     }
 
     fn global_command(

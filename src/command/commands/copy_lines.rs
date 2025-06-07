@@ -14,15 +14,17 @@ impl Command for CopyLines {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let start = editor.get_line_number_from(&self.line_range.start);
         let end = editor.get_line_number_from(&self.line_range.end);
+        let (start, end) = if start > end { (end, start) } else { (start, end) };
         let mut dest = editor.get_line_number_from(&self.address);
 
         if dest >= editor.buffer.lines.len() {
             dest = editor.buffer.lines.len().saturating_sub(1);
         }
 
-        let lines: Vec<String> = editor.buffer.lines[start..=end]
-            .iter()
-            .cloned()
+        editor
+            .buffer
+            .lines
+            .splice(base..base, lines.into_iter());
             .collect();
 
         let base = if matches!(

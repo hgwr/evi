@@ -14,14 +14,10 @@ impl Command for MoveLines {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let start = editor.get_line_number_from(&self.line_range.start);
         let end = editor.get_line_number_from(&self.line_range.end);
+        let (start, end) = if start > end { (end, start) } else { (start, end) };
         let mut dest = editor.get_line_number_from(&self.address);
 
-        let lines: Vec<String> = if start <= end && start < editor.buffer.lines.len() {
-            editor.buffer.lines.drain(start..=end).collect()
-        } else {
-            Vec::new()
-        };
-
+        let lines: Vec<String> = editor.buffer.lines.drain(start..=end).collect();
         if dest > end {
             dest -= lines.len();
         }
@@ -39,9 +35,10 @@ impl Command for MoveLines {
             dest + 1
         };
 
-        for (i, line) in lines.into_iter().enumerate() {
-            editor.buffer.lines.insert(base + i, line);
-        }
+        editor
+            .buffer
+            .lines
+            .splice(base..base, lines.into_iter());
         Ok(())
     }
 

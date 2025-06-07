@@ -45,3 +45,13 @@ def test_copy_line_to_top():
 def test_move_line_out_of_range():
     result = run_commands([':1m100\r'], initial_content='1\n2\n3\n')
     assert result.splitlines() == ['2', '3', '1']
+
+
+def test_copy_reverse_range():
+    result = run_commands([':3,1co$\r'], initial_content='1\n2\n3\n4\n')
+    assert result.splitlines() == ['1', '2', '3', '4', '1', '2', '3']
+
+
+def test_move_reverse_range():
+    result = run_commands([':3,1m$\r'], initial_content='1\n2\n3\n4\n')
+    assert result.splitlines() == ['4', '1', '2', '3']

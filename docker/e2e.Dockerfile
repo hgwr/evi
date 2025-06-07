@@ -1,4 +1,4 @@
-FROM rust:latest
+FROM rust:rust:1.78.0-bullseye
 
 # Install Python and create a virtual environment for test dependencies
 RUN apt-get update && \

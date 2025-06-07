@@ -49,7 +49,7 @@ def get_screen_and_cursor(child: pexpect.spawn, rows: int = 24) -> Tuple[str, Tu
 def run_motion_test(
     file_content: str,
     terminal_size: Tuple[int, int],
-    initial_cursor_pos: Tuple[int, int],  # unused currently
+    initial_cursor_pos: Tuple[int, int],
     command_to_test: str,
     expected_cursor_pos: Tuple[int, int],
 ) -> str:
@@ -71,7 +71,10 @@ def run_motion_test(
         # Ensure the editor has finished drawing before running commands
         get_screen_and_cursor(child)
 
-        # Cursor is at (1,1) when starting; send the command to test
+        # Move to the requested starting position
+        goto(child, initial_cursor_pos[0], initial_cursor_pos[1])
+
+        # Send the command to test
         child.send(command_to_test)
         screen, pos = get_screen_and_cursor(child)
         assert pos == expected_cursor_pos
@@ -86,7 +89,7 @@ def run_motion_test(
 
 def test_motion_w():
     run_motion_test(
-        file_content="word1 word2\n",
+        file_content="word1 word2",
         terminal_size=(24, 80),
         initial_cursor_pos=(1, 1),
         command_to_test="w",
@@ -103,10 +106,55 @@ def test_motion_dollar():
         expected_cursor_pos=(1, 11),
     )
 
-# TODO: implement tests for other motion commands
-# def test_motion_l():
-#     run_motion_test(...)
-# def test_motion_caret():
-#     run_motion_test(...)
-# def test_motion_G():
-#     run_motion_test(...)
+def test_motion_l():
+    run_motion_test(
+        file_content="abc\n",
+        terminal_size=(24, 80),
+        initial_cursor_pos=(1, 1),
+        command_to_test="l",
+        expected_cursor_pos=(1, 2),
+    )
+
+
+def test_motion_caret():
+    # TODO: '^' command is not yet implemented in evi
+    # run_motion_test(
+    #     file_content="  indented text\n",
+    #     terminal_size=(24, 80),
+    #     initial_cursor_pos=(1, 5),
+    #     command_to_test="^",
+    #     expected_cursor_pos=(1, 3),
+    # )
+    pass
+
+
+def test_motion_G():
+    # TODO: 'G' command is not yet implemented in evi
+    # run_motion_test(
+    #     file_content="line1\nline2\nline3\n",
+    #     terminal_size=(24, 80),
+    #     initial_cursor_pos=(1, 1),
+    #     command_to_test="G",
+    #     expected_cursor_pos=(4, 1),
+    # )
+    pass
+
+
+# TODO: implement these motions when supported by evi
+# def test_motion_gg():
+#     run_motion_test(
+#         file_content="line1\nline2\nline3\n",
+#         terminal_size=(24, 80),
+#         initial_cursor_pos=(3, 1),
+#         command_to_test="gg",
+#         expected_cursor_pos=(1, 1),
+#     )
+
+# def test_motion_ctrl_b():
+#     run_motion_test(
+#         file_content="one\ntwo\nthree\nfour\n",
+#         terminal_size=(24, 80),
+#         initial_cursor_pos=(4, 1),
+#         command_to_test="\x02",  # Ctrl-B page up
+#         expected_cursor_pos=(1, 1),
+#     )

@@ -18,4 +18,4 @@ ENV PATH="/opt/evi-venv/bin:$PATH"
 
 WORKDIR /evi
 
-ENTRYPOINT ["/bin/bash", "-c", "cargo build --verbose && pytest e2e --verbose"]
+ENTRYPOINT ["/bin/bash", "-c", "cargo build --verbose && pytest $PYTEST_ARGS"]

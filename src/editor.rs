@@ -96,6 +96,9 @@ pub struct Editor {
     pub last_input_string: String,
     pub ex_command_data: String,
     pub ex_command_cursor: usize,
+    pub ex_command_history: Vec<String>,
+    pub ex_command_history_index: usize,
+    pub ex_command_history_backup: String,
     pub search_query: String,
     pub last_search_pattern: Option<String>,
     pub last_search_direction: Option<SearchDirection>,
@@ -127,6 +130,9 @@ impl Editor {
             last_input_string: "".to_string(),
             ex_command_data: "".to_string(),
             ex_command_cursor: 0,
+            ex_command_history: Vec::new(),
+            ex_command_history_index: 0,
+            ex_command_history_backup: String::new(),
             search_query: String::new(),
             last_search_pattern: None,
             last_search_direction: None,
@@ -389,6 +395,8 @@ impl Editor {
         self.status_line = ":".to_string();
         self.ex_command_data.clear();
         self.ex_command_cursor = 0;
+        self.ex_command_history_index = self.ex_command_history.len();
+        self.ex_command_history_backup.clear();
     }
 
     pub fn set_search_mode(&mut self, direction: SearchDirection) {
@@ -428,6 +436,10 @@ impl Editor {
         }];
         // Ex commands should be undoable but should not affect the repeat ('.') state.
         self.command_history.push(chunk);
+        if !ex_command_str.is_empty() {
+            self.ex_command_history.push(ex_command_str.to_string());
+        }
+        self.ex_command_history_index = self.ex_command_history.len();
         self.ex_command_data = "".to_string();
         self.ex_command_cursor = 0;
         Ok(())
@@ -447,7 +459,8 @@ impl Editor {
     pub fn backspace_ex_command(&mut self) {
         if self.ex_command_cursor > 0 {
             self.ex_command_cursor -= 1;
-            let byte_idx = Editor::char_to_byte_index(&self.ex_command_data, self.ex_command_cursor);
+            let byte_idx =
+                Editor::char_to_byte_index(&self.ex_command_data, self.ex_command_cursor);
             self.ex_command_data.remove(byte_idx);
             self.update_ex_command_status();
         }
@@ -462,6 +475,35 @@ impl Editor {
     pub fn move_ex_command_cursor_right(&mut self) {
         if self.ex_command_cursor < self.ex_command_data.chars().count() {
             self.ex_command_cursor += 1;
+        }
+    }
+
+    pub fn previous_ex_command(&mut self) {
+        if self.ex_command_history.is_empty() {
+            return;
+        }
+        if self.ex_command_history_index == self.ex_command_history.len() {
+            self.ex_command_history_backup = self.ex_command_data.clone();
+        }
+        if self.ex_command_history_index > 0 {
+            self.ex_command_history_index -= 1;
+            self.ex_command_data = self.ex_command_history[self.ex_command_history_index].clone();
+            self.ex_command_cursor = self.ex_command_data.chars().count();
+            self.update_ex_command_status();
+        }
+    }
+
+    pub fn next_ex_command(&mut self) {
+        if self.ex_command_history_index < self.ex_command_history.len() {
+            self.ex_command_history_index += 1;
+            if self.ex_command_history_index == self.ex_command_history.len() {
+                self.ex_command_data = self.ex_command_history_backup.clone();
+            } else {
+                self.ex_command_data =
+                    self.ex_command_history[self.ex_command_history_index].clone();
+            }
+            self.ex_command_cursor = self.ex_command_data.chars().count();
+            self.update_ex_command_status();
         }
     }
 
@@ -531,11 +573,7 @@ impl Editor {
 
     pub fn get_ex_command_cursor_col(&self) -> u16 {
         let mut width = crate::util::get_char_width(':');
-        for c in self
-            .ex_command_data
-            .chars()
-            .take(self.ex_command_cursor)
-        {
+        for c in self.ex_command_data.chars().take(self.ex_command_cursor) {
             width += crate::util::get_char_width(c);
         }
         width
@@ -723,7 +761,8 @@ impl Editor {
             }
             if !new_chunk_for_history_and_next_repeat.is_empty() {
                 self.last_command = Some(new_chunk_for_history_and_next_repeat.clone());
-                self.command_history.push(new_chunk_for_history_and_next_repeat);
+                self.command_history
+                    .push(new_chunk_for_history_and_next_repeat);
             }
         }
         Ok(())

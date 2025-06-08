@@ -144,9 +144,16 @@ impl Editor {
     }
 
     pub fn open_file(&mut self, file_path: &PathBuf) {
-        self.buffer = Buffer::from_file(file_path);
-        self.editing_file_paths.push(file_path.clone());
-        self.current_file_index = self.editing_file_paths.len() - 1;
+        match Buffer::from_file(file_path) {
+            Ok(buffer) => {
+                self.buffer = buffer;
+                self.editing_file_paths.push(file_path.clone());
+                self.current_file_index = self.editing_file_paths.len() - 1;
+            }
+            Err(err) => {
+                self.status_line = format!("Failed to open file: {}", err);
+            }
+        }
     }
 
     pub fn save_file(&self) -> GenericResult<()> {
@@ -1234,6 +1241,7 @@ impl Drop for Editor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_editor_get_line_number_from_absolute() {
@@ -1506,5 +1514,16 @@ mod tests {
         editor.scroll_to_cursor_bottom();
         assert_eq!(editor.window_position_in_buffer.row, 1);
         assert_eq!(editor.cursor_position_on_screen.row, 0);
+    }
+
+    #[test]
+    fn test_open_file_failure_sets_status_line() {
+        let temp = NamedTempFile::new().unwrap();
+        let path = temp.path().to_path_buf();
+        drop(temp);
+
+        let mut editor = Editor::new();
+        editor.open_file(&path);
+        assert!(editor.status_line.starts_with("Failed to open file"));
     }
 }

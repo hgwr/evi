@@ -1,4 +1,9 @@
+import os
+import tempfile
+import pexpect
 from .helpers import run_commands
+from .conftest import EVI_BIN
+from .test_motion_commands import get_screen_and_cursor, get_cursor_position
 
 
 def test_write_command():
@@ -67,7 +72,30 @@ def test_copy_line():
 
 
 def test_copy_line_undo():
-    result = run_commands([':1co5\r', 'u'], initial_content='1\n2\n3\n4\n5\n6\n')
+    file_content = '1\n2\n3\n4\n5\n6\n'
+    fd, path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, 'w') as f:
+            f.write(file_content)
+
+        env = os.environ.copy()
+        env.setdefault('TERM', 'xterm')
+        child = pexpect.spawn(EVI_BIN, [path], env=env, encoding='utf-8')
+        child.delaybeforesend = float(os.getenv('EVI_DELAY_BEFORE_SEND', '0.01'))
+
+        get_screen_and_cursor(child)
+        child.send(':1co5\r')
+        child.send('u')
+        pos = get_cursor_position(child)
+        assert pos == (1, 1)
+
+        child.send(':q!\r')
+        child.expect(pexpect.EOF)
+
+        with open(path) as f:
+            result = f.read()
+    finally:
+        os.unlink(path)
     assert result.splitlines() == ['1', '2', '3', '4', '5', '6']
 
 

@@ -150,3 +150,8 @@ def test_move_reverse_range_undo():
 def test_move_reverse_range_repeat():
     result = run_commands([':3,1m$\r', '.'], initial_content='1\n2\n3\n4\n')
     assert result.splitlines() == ['4', '1', '2', '3']
+
+
+def test_print_range():
+    result = run_commands([':1,3p\r'], initial_content='1\n2\n3\n4\n', exit_cmd=':q!\r')
+    assert result.splitlines() == ['1', '2', '3', '4']

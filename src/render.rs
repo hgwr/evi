@@ -1,10 +1,6 @@
 use std::io::Write;
 
-use crossterm::{
-    cursor,
-    style,
-    terminal, QueueableCommand,
-};
+use crossterm::{cursor, style, terminal, QueueableCommand};
 use log::info;
 
 use crate::{
@@ -42,6 +38,8 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
                 }
             }
         }
+        let line_len = line.chars().count();
+        let mut wrapped_at_line_end = false;
         for (idx, c) in line.chars().enumerate() {
             if highlight.get(idx) == Some(&true) {
                 stdout.queue(style::SetAttribute(style::Attribute::Reverse))?;
@@ -56,14 +54,19 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
                 cursor_position_on_writing.width = 0;
                 cursor_position_on_writing.height += 1;
                 stdout.queue(cursor::MoveTo(0, cursor_position_on_writing.height))?;
+                if idx == line_len - 1 {
+                    wrapped_at_line_end = true;
+                }
             }
             if cursor_position_on_writing.height >= editor.content_height() {
                 break;
             }
         }
-        cursor_position_on_writing.width = 0;
-        cursor_position_on_writing.height += 1;
-        stdout.queue(cursor::MoveTo(0, cursor_position_on_writing.height))?;
+        if cursor_position_on_writing.width != 0 || line.is_empty() || !wrapped_at_line_end {
+            cursor_position_on_writing.width = 0;
+            cursor_position_on_writing.height += 1;
+            stdout.queue(cursor::MoveTo(0, cursor_position_on_writing.height))?;
+        }
     }
 
     // render status line

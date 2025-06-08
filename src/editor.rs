@@ -823,7 +823,7 @@ impl Editor {
     }
 
     fn line_height(&self, row: usize) -> usize {
-        let width = self.terminal_size.width as usize;
+        let width = (self.terminal_size.width as usize).max(1); // Ensure width is at least 1 to prevent division by zero
         self.buffer
             .lines
             .get(row)

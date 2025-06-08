@@ -789,6 +789,10 @@ impl Editor {
         self.terminal_size.height - 1
     }
 
+    pub fn max_content_row_index(&self) -> u16 {
+        self.content_height().saturating_sub(1)
+    }
+
     pub fn page_down(&mut self) -> GenericResult<()> {
         let height = self.content_height() as usize;
         let col = self.cursor_position_in_buffer.col;
@@ -852,7 +856,7 @@ impl Editor {
         self.cursor_position_on_screen.col += char_width;
         if self.cursor_position_on_screen.col >= self.terminal_size.width {
             self.cursor_position_on_screen.col = 0;
-            if self.cursor_position_on_screen.row < self.content_height() {
+            if self.cursor_position_on_screen.row < self.max_content_row_index() {
                 self.cursor_position_on_screen.row += 1;
             } else {
                 self.window_position_in_buffer.row += 1;
@@ -880,7 +884,7 @@ impl Editor {
         self.cursor_position_on_screen.col += char_width;
         if self.cursor_position_on_screen.col >= self.terminal_size.width {
             self.cursor_position_on_screen.col = 0;
-            if self.cursor_position_on_screen.row < self.content_height() {
+            if self.cursor_position_on_screen.row < self.max_content_row_index() {
                 self.cursor_position_on_screen.row += 1;
             } else {
                 self.window_position_in_buffer.row += 1;
@@ -1047,7 +1051,7 @@ impl Editor {
             .insert(self.cursor_position_in_buffer.row + 1, rest_of_line);
         self.cursor_position_in_buffer.row += 1;
         self.cursor_position_in_buffer.col = 0;
-        if self.cursor_position_on_screen.row < self.content_height() {
+        if self.cursor_position_on_screen.row < self.max_content_row_index() {
             self.cursor_position_on_screen.row += 1;
         } else {
             self.window_position_in_buffer.row += 1;

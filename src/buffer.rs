@@ -37,13 +37,10 @@ impl Buffer {
         Buffer { lines: Vec::new() }
     }
 
-    pub fn from_file(file_path: &PathBuf) -> Buffer {
-        let lines = std::fs::read_to_string(file_path)
-            .expect("Failed to read file")
-            .lines()
-            .map(|s| s.to_string())
-            .collect();
-        Buffer { lines }
+    pub fn from_file(file_path: &PathBuf) -> GenericResult<Buffer> {
+        let content = std::fs::read_to_string(file_path)?;
+        let lines = content.lines().map(|s| s.to_string()).collect();
+        Ok(Buffer { lines })
     }
 
     pub fn to_file(&self, file_path: &PathBuf) -> GenericResult<()> {
@@ -198,6 +195,8 @@ impl Buffer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_cursor_position_in_buffer_cmp() {
@@ -327,5 +326,14 @@ mod tests {
             )
             .unwrap();
         assert_eq!(text, "bc\nde");
+    }
+
+    #[test]
+    fn test_from_file_nonexistent() {
+        let temp = NamedTempFile::new().unwrap();
+        let path = PathBuf::from(temp.path());
+        drop(temp);
+        let result = Buffer::from_file(&path);
+        assert!(result.is_err());
     }
 }

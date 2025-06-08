@@ -79,10 +79,15 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
         stdout.queue(style::Print(" "))?;
     }
 
-    stdout.queue(cursor::MoveTo(
-        editor.cursor_position_on_screen.col as u16,
-        editor.cursor_position_on_screen.row as u16,
-    ))?;
+    let (cursor_col, cursor_row) = if editor.is_ex_command_mode() {
+        (editor.get_ex_command_cursor_col(), editor.content_height())
+    } else {
+        (
+            editor.cursor_position_on_screen.col as u16,
+            editor.cursor_position_on_screen.row as u16,
+        )
+    };
+    stdout.queue(cursor::MoveTo(cursor_col, cursor_row))?;
     stdout.flush()?;
 
     Ok(())

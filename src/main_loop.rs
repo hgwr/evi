@@ -73,9 +73,35 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                             editor.set_command_mode();
                             editor.status_line = "".to_string();
                         }
-                        _ => {
-                            editor.append_ex_command(key_data);
+                        KeyData {
+                            key_code: event::KeyCode::Backspace,
+                            ..
                         }
+                        | KeyData {
+                            key_code: event::KeyCode::Char('h'),
+                            modifiers: KeyModifiers::CONTROL,
+                        } => {
+                            editor.backspace_ex_command();
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Left,
+                            ..
+                        } => {
+                            editor.move_ex_command_cursor_left();
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Right,
+                            ..
+                        } => {
+                            editor.move_ex_command_cursor_right();
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Char(c),
+                            ..
+                        } => {
+                            editor.insert_ex_command_char(c);
+                        }
+                        _ => {}
                     }
                 } else if editor.is_search_mode() {
                     let key_data: KeyData = key_event.into();

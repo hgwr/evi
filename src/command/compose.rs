@@ -115,14 +115,14 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
             }
             KeyEvent {
                 code: KeyCode::Char('G'),
-                modifiers: KeyModifiers::NONE,
+                modifiers,
                 ..
-            } => {
+            } if (*modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT) => {
                 if let InputState::Start = input_state {
                     return InputState::CommandCompleted(CommandData {
                         count: 0,
                         key_code: KeyCode::Char('G'),
-                        modifiers: KeyModifiers::NONE,
+                        modifiers: *modifiers,
                         range: None,
                     });
                 } else if let InputState::AccumulateDigits(digits) = input_state {
@@ -130,7 +130,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     return InputState::CommandCompleted(CommandData {
                         count,
                         key_code: KeyCode::Char('G'),
-                        modifiers: KeyModifiers::NONE,
+                        modifiers: *modifiers,
                         range: None,
                     });
                 } else {

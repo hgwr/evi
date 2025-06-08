@@ -12,6 +12,7 @@ use crate::render::render;
 use crate::{
     buffer::Buffer,
     command::base::ExecutedCommand,
+    command::commands::go_to_file::{GoToFirstLine, GoToLastLine},
     generic_error::{GenericError, GenericResult},
 };
 use crate::{
@@ -678,7 +679,8 @@ impl Editor {
     pub fn execute_command(&mut self, command_data: CommandData) -> GenericResult<()> {
         let mut command = command_factory(&command_data);
         if !command.is_modeful() && command.is_reusable() {
-            for _ in 0..command_data.count {
+            let repeat_count = if command_data.count == 0 { 1 } else { command_data.count };
+            for _ in 0..repeat_count {
                 command.execute(self)?;
             }
             if command.is_undoable() {
@@ -690,24 +692,35 @@ impl Editor {
                 self.command_history.push(chunk);
             }
         } else if !command.is_modeful() && !command.is_reusable() {
-            let mut command_chunk: Vec<ExecutedCommand> = Vec::new();
-            let disassemble_command_data = CommandData {
-                count: 1,
-                ..command_data
-            };
-            for _ in 0..command_data.count {
-                let mut command = command_factory(&disassemble_command_data);
+            // Commands like 'G' interpret the count as a target line rather than a repeat count.
+            if command.is::<GoToFirstLine>() || command.is::<GoToLastLine>() {
                 command.execute(self)?;
                 if command.is_undoable() {
-                    command_chunk.push(ExecutedCommand {
-                        command_data: disassemble_command_data.clone(),
-                        command,
-                    });
+                    let chunk = vec![ExecutedCommand { command_data, command }];
+                    self.last_command = Some(chunk.clone());
+                    self.command_history.push(chunk);
                 }
-            }
-            if command_chunk.len() > 0 {
-                self.last_command = Some(command_chunk.clone());
-                self.command_history.push(command_chunk);
+            } else {
+                let mut command_chunk: Vec<ExecutedCommand> = Vec::new();
+                let disassemble_command_data = CommandData {
+                    count: 1,
+                    ..command_data
+                };
+                let repeat_count = if command_data.count == 0 { 1 } else { command_data.count };
+                for _ in 0..repeat_count {
+                    let mut command = command_factory(&disassemble_command_data);
+                    command.execute(self)?;
+                    if command.is_undoable() {
+                        command_chunk.push(ExecutedCommand {
+                            command_data: disassemble_command_data.clone(),
+                            command,
+                        });
+                    }
+                }
+                if command_chunk.len() > 0 {
+                    self.last_command = Some(command_chunk.clone());
+                    self.command_history.push(command_chunk);
+                }
             }
         } else {
             command.execute(self)?;

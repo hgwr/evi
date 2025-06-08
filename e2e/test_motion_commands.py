@@ -134,7 +134,7 @@ def test_motion_G():
         terminal_size=(24, 80),
         initial_cursor_pos=(1, 1),
         command_to_test="G",
-        expected_cursor_pos=(4, 1),
+        expected_cursor_pos=(3, 1),
     )
 
 

@@ -46,8 +46,9 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                                 event_keys.clear();
                             }
                             InputState::CommandInvalid(key_codes) => {
-                                //　TODO: error message
                                 error!("Invalid command: {:?}", key_codes);
+                                editor.status_line = "?".to_string();
+                                editor.display_visual_bell()?;
                                 event_keys.clear();
                             }
                             _ => {

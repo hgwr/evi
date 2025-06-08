@@ -17,8 +17,7 @@ impl Command for GoToFirstLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let current_col = editor.cursor_position_in_buffer.col;
         let max_row = editor.buffer.lines.len().saturating_sub(1);
-        let target = if self.count == 0 { 0 } else { self.count - 1 };
-        let target = target.min(max_row);
+        let target = if self.count == 0 { 0 } else { self.count - 1 }.min(max_row);
         let dest_col = editor
             .buffer
             .lines

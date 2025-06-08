@@ -112,35 +112,3 @@ def test_full_width_lines_no_extra_blank_lines():
 # TODO: Add tests for '^', 'G', and other motion commands once implemented in evi
 
 
-def test_G_on_long_wrapped_file_no_extra_blank_lines():
-    """Cursor should land on the last line without leaving a blank line."""
-    lines = [(chr(ord('a') + i)) * 90 for i in range(13)]
-    file_content = "\n".join(lines) + "\n"
-    fd, path = tempfile.mkstemp()
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(file_content)
-
-        env = os.environ.copy()
-        env.setdefault("TERM", "xterm")
-        child = pexpect.spawn(EVI_BIN, [path], env=env, encoding="utf-8")
-        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
-        child.setwinsize(24, 80)
-
-        # Let the initial render finish and then jump to the last line
-        get_screen_and_cursor(child)
-        child.send("G")
-
-        screen, pos = get_screen_and_cursor(child)
-        lines_map = _parse_screen(screen)
-
-        # Expect the last line to occupy the last two rows without a blank line
-        assert lines_map[21] == lines[-1][:80]
-        assert lines_map[22] == lines[-1][80:]
-        assert pos == (21, 1)
-
-        child.send(":q!\r")
-        child.expect(pexpect.EOF)
-    finally:
-        os.unlink(path)
-

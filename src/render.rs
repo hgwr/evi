@@ -39,12 +39,7 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
     }
     if total_rows < editor.content_height() as usize {
         while start_row > 0 {
-            let len = lines[start_row - 1].chars().count();
-            let row_height = if len == 0 {
-                1
-            } else {
-                (len - 1) / editor.terminal_size.width as usize + 1
-            };
+            let row_height = editor.line_height(start_row - 1);
             if total_rows + row_height > editor.content_height() as usize {
                 break;
             }

@@ -32,7 +32,7 @@ def test_long_line_wrapping():
         assert lines[1] == "a" * 60
         assert lines[2] == "b" * 80
         assert lines[3] == "b" * 40
-        assert lines[4].startswith("c" * 60)
+        assert lines[4] == "c" * 60
 
         child.send(":q!\r")
         child.expect(pexpect.EOF)

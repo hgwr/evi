@@ -776,6 +776,35 @@ impl Editor {
         self.terminal_size.height - 1
     }
 
+    pub fn page_down(&mut self) -> GenericResult<()> {
+        let height = self.content_height() as usize;
+        let col = self.cursor_position_in_buffer.col;
+        let max_top = self.buffer.lines.len().saturating_sub(1);
+        self.window_position_in_buffer.row =
+            (self.window_position_in_buffer.row + height).min(max_top);
+        self.cursor_position_in_buffer.row = self.window_position_in_buffer.row;
+        self.cursor_position_in_buffer.col = 0;
+        self.cursor_position_on_screen.row = 0;
+        self.cursor_position_on_screen.col = 0;
+        let dest_col = col.min(self.get_num_of_current_line_chars());
+        self.move_cursor_within_line(dest_col)?;
+        Ok(())
+    }
+
+    pub fn page_up(&mut self) -> GenericResult<()> {
+        let height = self.content_height() as usize;
+        let col = self.cursor_position_in_buffer.col;
+        self.window_position_in_buffer.row =
+            self.window_position_in_buffer.row.saturating_sub(height);
+        self.cursor_position_in_buffer.row = self.window_position_in_buffer.row;
+        self.cursor_position_in_buffer.col = 0;
+        self.cursor_position_on_screen.row = 0;
+        self.cursor_position_on_screen.col = 0;
+        let dest_col = col.min(self.get_num_of_current_line_chars());
+        self.move_cursor_within_line(dest_col)?;
+        Ok(())
+    }
+
     pub fn display_visual_bell(&mut self) -> GenericResult<()> {
         let mut stdout = std::io::stdout();
         stdout.write_all(b"\x07")?;
@@ -1255,5 +1284,24 @@ mod tests {
         assert_eq!(editor.cursor_position_in_buffer.col, 7);
         editor.repeat_find_char().unwrap();
         assert_eq!(editor.cursor_position_in_buffer.col, 4);
+    }
+
+    #[test]
+    fn test_page_down_and_up() {
+        let mut editor = Editor::new();
+        editor.resize_terminal(20, 4);
+        editor.buffer.lines = vec![
+            "l1".to_string(),
+            "l2".to_string(),
+            "l3".to_string(),
+            "l4".to_string(),
+            "l5".to_string(),
+        ];
+
+        editor.page_down().unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.row, 3);
+
+        editor.page_up().unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.row, 0);
     }
 }

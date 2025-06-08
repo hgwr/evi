@@ -158,3 +158,23 @@ def test_motion_G():
 #         command_to_test="\x02",  # Ctrl-B page up
 #         expected_cursor_pos=(1, 1),
 #     )
+
+
+def test_motion_ctrl_f():
+    run_motion_test(
+        file_content="line1\nline2\nline3\nline4\nline5\nline6\n",
+        terminal_size=(4, 20),
+        initial_cursor_pos=(1, 1),
+        command_to_test="\x1b[6~",
+        expected_cursor_pos=(1, 1),
+    )
+
+
+def test_motion_ctrl_b():
+    run_motion_test(
+        file_content="one\ntwo\nthree\nfour\nfive\nsix\n",
+        terminal_size=(4, 20),
+        initial_cursor_pos=(4, 1),
+        command_to_test="\x1b[5~",
+        expected_cursor_pos=(1, 1),
+    )

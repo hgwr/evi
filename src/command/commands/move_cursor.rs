@@ -288,3 +288,27 @@ impl Command for BackwardWord {
         self
     }
 }
+
+#[derive(Clone)]
+pub struct PageDown;
+impl Command for PageDown {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        editor.page_down()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+#[derive(Clone)]
+pub struct PageUp;
+impl Command for PageUp {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        editor.page_up()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}

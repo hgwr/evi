@@ -59,6 +59,26 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             ..
         } => Box::new(MoveEndOfLine {}),
 
+        // page movement commands
+        CommandData {
+            key_code: KeyCode::Char('f'),
+            modifiers: KeyModifiers::CONTROL,
+            ..
+        } => Box::new(PageDown {}),
+        CommandData {
+            key_code: KeyCode::Char('b'),
+            modifiers: KeyModifiers::CONTROL,
+            ..
+        } => Box::new(PageUp {}),
+        CommandData {
+            key_code: KeyCode::PageDown,
+            ..
+        } => Box::new(PageDown {}),
+        CommandData {
+            key_code: KeyCode::PageUp,
+            ..
+        } => Box::new(PageUp {}),
+
         // jump commands
         CommandData {
             key_code: KeyCode::Char('w'),

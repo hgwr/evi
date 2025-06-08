@@ -24,6 +24,7 @@ use crate::{
     command::factory::command_factory,
     data::{LineAddressType, SimpleLineAddressType},
 };
+use regex::Regex;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TerminalSize {
@@ -570,6 +571,34 @@ impl Editor {
             .nth(idx)
             .map(|(i, _)| i)
             .unwrap_or_else(|| s.len())
+    }
+
+    fn search_line(
+        &self,
+        re: &Regex,
+        start_row: usize,
+        direction: SearchDirection,
+    ) -> Option<usize> {
+        match direction {
+            SearchDirection::Forward => {
+                for i in start_row..self.buffer.lines.len() {
+                    if re.is_match(&self.buffer.lines[i]) {
+                        return Some(i);
+                    }
+                }
+                None
+            }
+            SearchDirection::Backward => {
+                let mut i = start_row as isize;
+                while i >= 0 {
+                    if re.is_match(&self.buffer.lines[i as usize]) {
+                        return Some(i as usize);
+                    }
+                    i -= 1;
+                }
+                None
+            }
+        }
     }
 
     pub fn get_ex_command_cursor_col(&self) -> u16 {
@@ -1132,9 +1161,17 @@ impl Editor {
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::AllLines) => {
                 self.buffer.lines.len().saturating_sub(1) as isize
             }
-            crate::data::LineAddressType::Absolute(SimpleLineAddressType::Pattern(_)) => {
-                // TODO: Implement
-                unimplemented!()
+            crate::data::LineAddressType::Absolute(SimpleLineAddressType::Pattern(p)) => {
+                let re = Regex::new(&p.pattern).ok();
+                if let Some(re) = re {
+                    if let Some(idx) = self.search_line(&re, 0, SearchDirection::Forward) {
+                        idx as isize
+                    } else {
+                        self.buffer.lines.len().saturating_sub(1) as isize
+                    }
+                } else {
+                    0
+                }
             }
             crate::data::LineAddressType::Relative(SimpleLineAddressType::FirstLine, i) => 0 + i,
             crate::data::LineAddressType::Relative(SimpleLineAddressType::LineNumber(n), i) => {
@@ -1149,9 +1186,24 @@ impl Editor {
             crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
                 (self.buffer.lines.len().saturating_sub(1) as isize) + i
             }
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), _i) => {
-                // TODO: Implement
-                unimplemented!()
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(p), i) => {
+                let start = (self.cursor_position_in_buffer.row as isize + *i)
+                    .clamp(0, self.buffer.lines.len().saturating_sub(1) as isize)
+                    as usize;
+                let dir = if *i < 0 {
+                    SearchDirection::Backward
+                } else {
+                    SearchDirection::Forward
+                };
+                if let Ok(re) = Regex::new(&p.pattern) {
+                    if let Some(idx) = self.search_line(&re, start, dir) {
+                        idx as isize
+                    } else {
+                        start as isize
+                    }
+                } else {
+                    start as isize
+                }
             }
         };
 
@@ -1262,6 +1314,36 @@ mod tests {
             )),
             0
         );
+    }
+
+    #[test]
+    fn test_editor_get_line_number_from_pattern() {
+        use crate::data::Pattern;
+        let mut editor = Editor::new();
+        editor.buffer.lines = vec![
+            "foo".to_string(),
+            "bar".to_string(),
+            "baz".to_string(),
+            "foo".to_string(),
+        ];
+
+        let addr = LineAddressType::Absolute(SimpleLineAddressType::Pattern(Pattern {
+            pattern: "baz".to_string(),
+        }));
+        assert_eq!(editor.get_line_number_from(&addr), 2);
+
+        let addr = LineAddressType::Relative(
+            SimpleLineAddressType::Pattern(Pattern {
+                pattern: "foo".to_string(),
+            }),
+            2,
+        );
+        assert_eq!(editor.get_line_number_from(&addr), 3);
+
+        let addr = LineAddressType::Absolute(SimpleLineAddressType::Pattern(Pattern {
+            pattern: "nomatch".to_string(),
+        }));
+        assert_eq!(editor.get_line_number_from(&addr), 3);
     }
 
     #[test]

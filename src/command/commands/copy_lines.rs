@@ -3,13 +3,14 @@ use std::cmp;
 
 use crate::command::base::Command;
 use crate::data::{LineAddressType, LineRange, SimpleLineAddressType};
-use crate::editor::Editor;
+use crate::editor::{Editor, EditorCursorData};
 use crate::generic_error::GenericResult;
 
 #[derive(Clone)]
 pub struct CopyLines {
     pub line_range: LineRange,
     pub address: LineAddressType,
+    pub editor_cursor_data: Option<EditorCursorData>,
     pub insertion_idx: Option<usize>,
     pub copied_len: usize,
 }
@@ -21,6 +22,7 @@ impl Command for CopyLines {
 
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let buffer_len = editor.buffer.lines.len();
+        self.editor_cursor_data = Some(editor.snapshot_cursor_data());
 
         // 1. Determine source range (0-indexed, inclusive start and end)
         let mut start_idx = editor.get_line_number_from(&self.line_range.start);
@@ -92,6 +94,9 @@ impl Command for CopyLines {
                 editor.buffer.lines.drain(idx..end);
             }
         }
+        if let Some(cursor) = self.editor_cursor_data {
+            editor.restore_cursor_data(cursor);
+        }
         Ok(())
     }
 
@@ -99,6 +104,7 @@ impl Command for CopyLines {
         let mut new_cmd = Box::new(CopyLines {
             line_range: self.line_range.clone(),
             address: self.address.clone(),
+            editor_cursor_data: None,
             insertion_idx: None,
             copied_len: 0,
         });

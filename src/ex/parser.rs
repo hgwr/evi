@@ -232,6 +232,7 @@ impl Parser {
         let cp = copy_lines::CopyLines {
             line_range: line_range.clone(),
             address,
+            editor_cursor_data: None,
             insertion_idx: None,
             copied_len: 0,
         };

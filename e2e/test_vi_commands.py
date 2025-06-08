@@ -121,3 +121,40 @@ def test_cursor_motion_zero_dollar():
 def test_word_motion_w_b():
     result = run_commands(['w', 'x', 'b', 'x'], initial_content='one two\n')
     assert result.strip() == 'ne wo'
+
+
+def _parse_screen(screen: str) -> dict[int, str]:
+    import re
+    rows: dict[int, str] = {}
+    for row, _col, text in re.findall(r"\x1b\[(\d+);(\d+)H([^\x1b]*)", screen):
+        if text:
+            rows[int(row)] = text
+    return rows
+
+
+def test_invalid_command_shows_status_line(tmp_path):
+    import os
+    import pexpect
+    from .conftest import EVI_BIN
+    from .test_motion_commands import get_screen_and_cursor
+
+    file_path = tmp_path / "file.txt"
+    file_path.write_text("test\n")
+
+    env = os.environ.copy()
+    env.setdefault("TERM", "xterm")
+
+    child = pexpect.spawn(EVI_BIN, [str(file_path)], env=env, encoding="utf-8")
+    child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
+    child.setwinsize(24, 80)
+
+    # Wait for the editor to render
+    get_screen_and_cursor(child)
+
+    # Send an invalid command sequence and check status line
+    child.send("dZ")
+    child.expect("\x07")
+    child.expect("\?")
+
+    child.send(":q!\r")
+    child.expect(pexpect.EOF)

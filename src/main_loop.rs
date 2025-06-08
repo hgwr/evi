@@ -96,6 +96,18 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                             editor.move_ex_command_cursor_right();
                         }
                         KeyData {
+                            key_code: event::KeyCode::Up,
+                            ..
+                        } => {
+                            editor.previous_ex_command();
+                        }
+                        KeyData {
+                            key_code: event::KeyCode::Down,
+                            ..
+                        } => {
+                            editor.next_ex_command();
+                        }
+                        KeyData {
                             key_code: event::KeyCode::Char(c),
                             ..
                         } => {

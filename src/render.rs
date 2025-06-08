@@ -19,13 +19,41 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
         width: 0,
         height: 0,
     };
-    let start_row: usize = editor.window_position_in_buffer.row;
+    let mut start_row: usize = editor.window_position_in_buffer.row;
     let lines = &editor.buffer.lines;
+
+    // Adjust start_row so that the screen is filled from the bottom when
+    // nearing the end of the buffer. This prevents extra blank lines from
+    // appearing below the last line when it wraps.
+    let mut total_rows = 0usize;
+    for line in &lines[start_row..] {
+        let len = line.chars().count();
+        total_rows += if len == 0 {
+            1
+        } else {
+            (len - 1) / editor.terminal_size.width as usize + 1
+        };
+        if total_rows >= editor.content_height() as usize {
+            break;
+        }
+    }
+    if total_rows < editor.content_height() as usize {
+        while start_row > 0 && total_rows < editor.content_height() as usize {
+            start_row -= 1;
+            let len = lines[start_row].chars().count();
+            total_rows += if len == 0 {
+                1
+            } else {
+                (len - 1) / editor.terminal_size.width as usize + 1
+            };
+        }
+    }
+    let row_offset = editor.window_position_in_buffer.row - start_row;
     let highlight_re = editor
         .last_search_pattern
         .as_ref()
         .and_then(|p| regex::Regex::new(p).ok());
-    for line in &lines[start_row..] {
+    for (line_idx, line) in lines[start_row..].iter().enumerate() {
         let mut highlight: Vec<bool> = vec![false; line.chars().count()];
         if let Some(re) = &highlight_re {
             for mat in re.find_iter(line) {
@@ -62,7 +90,10 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
                 break;
             }
         }
-        if cursor_position_on_writing.width != 0 || line.is_empty() || !wrapped_at_line_end {
+        if (cursor_position_on_writing.width != 0 || line.is_empty() || !wrapped_at_line_end)
+            && cursor_position_on_writing.height < editor.content_height() - 1
+            && (line_idx + start_row + 1) < lines.len()
+        {
             cursor_position_on_writing.width = 0;
             cursor_position_on_writing.height += 1;
             stdout.queue(cursor::MoveTo(0, cursor_position_on_writing.height))?;
@@ -87,7 +118,7 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
     } else {
         (
             editor.cursor_position_on_screen.col as u16,
-            editor.cursor_position_on_screen.row as u16,
+            (editor.cursor_position_on_screen.row as usize + row_offset) as u16,
         )
     };
     stdout.queue(cursor::MoveTo(cursor_col, cursor_row))?;

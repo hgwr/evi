@@ -95,6 +95,7 @@ pub struct Editor {
     pub unnamed_register_linewise: bool,
     pub last_input_string: String,
     pub ex_command_data: String,
+    pub ex_command_cursor: usize,
     pub search_query: String,
     pub last_search_pattern: Option<String>,
     pub last_search_direction: Option<SearchDirection>,
@@ -125,6 +126,7 @@ impl Editor {
             unnamed_register_linewise: false,
             last_input_string: "".to_string(),
             ex_command_data: "".to_string(),
+            ex_command_cursor: 0,
             search_query: String::new(),
             last_search_pattern: None,
             last_search_direction: None,
@@ -385,6 +387,8 @@ impl Editor {
     pub fn set_ex_command_mode(&mut self) {
         self.mode = Mode::ExCommand;
         self.status_line = ":".to_string();
+        self.ex_command_data.clear();
+        self.ex_command_cursor = 0;
     }
 
     pub fn set_search_mode(&mut self, direction: SearchDirection) {
@@ -425,17 +429,39 @@ impl Editor {
         // Ex commands should be undoable but should not affect the repeat ('.') state.
         self.command_history.push(chunk);
         self.ex_command_data = "".to_string();
+        self.ex_command_cursor = 0;
         Ok(())
     }
 
-    pub fn append_ex_command(&mut self, key_data: crate::command::compose::KeyData) {
-        if let crate::command::compose::KeyData {
-            key_code: crossterm::event::KeyCode::Char(c),
-            ..
-        } = key_data
-        {
-            self.ex_command_data.push(c);
-            self.status_line = ":".to_owned() + &self.ex_command_data.clone();
+    fn update_ex_command_status(&mut self) {
+        self.status_line = ":".to_owned() + &self.ex_command_data;
+    }
+
+    pub fn insert_ex_command_char(&mut self, c: char) {
+        let byte_idx = Editor::char_to_byte_index(&self.ex_command_data, self.ex_command_cursor);
+        self.ex_command_data.insert(byte_idx, c);
+        self.ex_command_cursor += 1;
+        self.update_ex_command_status();
+    }
+
+    pub fn backspace_ex_command(&mut self) {
+        if self.ex_command_cursor > 0 {
+            self.ex_command_cursor -= 1;
+            let byte_idx = Editor::char_to_byte_index(&self.ex_command_data, self.ex_command_cursor);
+            self.ex_command_data.remove(byte_idx);
+            self.update_ex_command_status();
+        }
+    }
+
+    pub fn move_ex_command_cursor_left(&mut self) {
+        if self.ex_command_cursor > 0 {
+            self.ex_command_cursor -= 1;
+        }
+    }
+
+    pub fn move_ex_command_cursor_right(&mut self) {
+        if self.ex_command_cursor < self.ex_command_data.chars().count() {
+            self.ex_command_cursor += 1;
         }
     }
 
@@ -501,6 +527,18 @@ impl Editor {
             .nth(idx)
             .map(|(i, _)| i)
             .unwrap_or_else(|| s.len())
+    }
+
+    pub fn get_ex_command_cursor_col(&self) -> u16 {
+        let mut width = crate::util::get_char_width(':');
+        for c in self
+            .ex_command_data
+            .chars()
+            .take(self.ex_command_cursor)
+        {
+            width += crate::util::get_char_width(c);
+        }
+        width
     }
 
     fn find_next_match(

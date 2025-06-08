@@ -78,4 +78,31 @@ def test_cursor_j_k_on_wrapped_line():
     finally:
         os.unlink(path)
 
+
+def test_full_width_lines_no_extra_blank_lines():
+    file_content = "{}\n{}\n{}\n".format("A" * 80, "B" * 80, "C" * 80)
+    fd, path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(file_content)
+
+        env = os.environ.copy()
+        env.setdefault("TERM", "xterm")
+        child = pexpect.spawn(EVI_BIN, [path], env=env, encoding="utf-8")
+        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
+        child.setwinsize(24, 80)
+
+        screen, _ = get_screen_and_cursor(child)
+        lines = _parse_screen(screen)
+
+        assert lines[1] == "A" * 80
+        assert lines[2] == "B" * 80
+        assert lines[3] == "C" * 80
+
+        child.send(":q!\r")
+        child.expect(pexpect.EOF)
+    finally:
+        os.unlink(path)
+
+
 # TODO: Add tests for '^', 'G', and other motion commands once implemented in evi

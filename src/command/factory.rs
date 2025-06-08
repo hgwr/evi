@@ -8,6 +8,7 @@ use super::commands::append::Append;
 use super::commands::change::Change;
 use super::commands::delete::{Delete, DeleteChar};
 use super::commands::find_char::{FindChar, RepeatFindChar};
+use super::commands::go_to_file::{GoToFirstLine, GoToLastLine};
 use super::commands::insert::Insert;
 use super::commands::misc::DisplayFile;
 use super::commands::open_line::OpenLine;
@@ -136,6 +137,23 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char(';'),
             ..
         } => Box::new(RepeatFindChar {}),
+        CommandData {
+            key_code: KeyCode::Char('G'),
+            ..
+        } => Box::new(GoToLastLine {
+            count: command_data.count,
+        }),
+        CommandData {
+            key_code: KeyCode::Char('g'),
+            range:
+                Some(JumpCommandData {
+                    key_code: KeyCode::Char('g'),
+                    ..
+                }),
+            ..
+        } => Box::new(GoToFirstLine {
+            count: command_data.count,
+        }),
 
         // insert commands
         CommandData {

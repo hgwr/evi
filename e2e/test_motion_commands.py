@@ -129,26 +129,23 @@ def test_motion_caret():
 
 
 def test_motion_G():
-    # TODO: 'G' command is not yet implemented in evi
-    # run_motion_test(
-    #     file_content="line1\nline2\nline3\n",
-    #     terminal_size=(24, 80),
-    #     initial_cursor_pos=(1, 1),
-    #     command_to_test="G",
-    #     expected_cursor_pos=(4, 1),
-    # )
-    pass
+    run_motion_test(
+        file_content="line1\nline2\nline3\n",
+        terminal_size=(24, 80),
+        initial_cursor_pos=(1, 1),
+        command_to_test="G",
+        expected_cursor_pos=(4, 1),
+    )
 
 
-# TODO: implement these motions when supported by evi
-# def test_motion_gg():
-#     run_motion_test(
-#         file_content="line1\nline2\nline3\n",
-#         terminal_size=(24, 80),
-#         initial_cursor_pos=(3, 1),
-#         command_to_test="gg",
-#         expected_cursor_pos=(1, 1),
-#     )
+def test_motion_gg():
+    run_motion_test(
+        file_content="line1\nline2\nline3\n",
+        terminal_size=(24, 80),
+        initial_cursor_pos=(3, 1),
+        command_to_test="gg",
+        expected_cursor_pos=(1, 1),
+    )
 
 # def test_motion_ctrl_b():
 #     run_motion_test(

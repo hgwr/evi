@@ -114,6 +114,88 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 }
             }
             KeyEvent {
+                code: KeyCode::Char('G'),
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
+                if let InputState::Start = input_state {
+                    return InputState::CommandCompleted(CommandData {
+                        count: 0,
+                        key_code: KeyCode::Char('G'),
+                        modifiers: KeyModifiers::NONE,
+                        range: None,
+                    });
+                } else if let InputState::AccumulateDigits(digits) = input_state {
+                    let count = digits.parse().unwrap();
+                    return InputState::CommandCompleted(CommandData {
+                        count,
+                        key_code: KeyCode::Char('G'),
+                        modifiers: KeyModifiers::NONE,
+                        range: None,
+                    });
+                } else {
+                    return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
+                }
+            }
+            KeyEvent {
+                code: KeyCode::Char('g'),
+                modifiers: KeyModifiers::NONE,
+                ..
+            } => {
+                if let InputState::Start = input_state {
+                    input_state = InputState::CommandComposing(KeyData {
+                        key_code: KeyCode::Char('g'),
+                        modifiers: KeyModifiers::NONE,
+                    });
+                } else if let InputState::AccumulateDigits(digits) = input_state {
+                    let count = digits.parse().unwrap();
+                    input_state = InputState::DigitsAndCommand(
+                        count,
+                        KeyData {
+                            key_code: KeyCode::Char('g'),
+                            modifiers: KeyModifiers::NONE,
+                        },
+                    );
+                } else if let InputState::CommandComposing(composing) = input_state {
+                    if composing.key_code == KeyCode::Char('g') {
+                        let range = Some(JumpCommandData {
+                            count: 1,
+                            key_code: KeyCode::Char('g'),
+                            modifiers: KeyModifiers::NONE,
+                        });
+                        return InputState::CommandCompleted(CommandData {
+                            count: 1,
+                            key_code: KeyCode::Char('g'),
+                            modifiers: KeyModifiers::NONE,
+                            range,
+                        });
+                    } else {
+                        return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
+                    }
+                } else if let InputState::DigitsAndCommand(count, composing) = input_state {
+                    if composing.key_code == KeyCode::Char('g') {
+                        let range = Some(JumpCommandData {
+                            count: 1,
+                            key_code: KeyCode::Char('g'),
+                            modifiers: KeyModifiers::NONE,
+                        });
+                        return InputState::CommandCompleted(CommandData {
+                            count,
+                            key_code: KeyCode::Char('g'),
+                            modifiers: KeyModifiers::NONE,
+                            range,
+                        });
+                    } else {
+                        return InputState::CommandInvalid(format!(
+                            "Invalid command: {:?}{:?}{:?}",
+                            composing.key_code, count, event
+                        ));
+                    }
+                } else {
+                    return InputState::CommandInvalid(format!("Invalid command: {:?}", event));
+                }
+            }
+            KeyEvent {
                 code, modifiers, ..
             } if (*modifiers == KeyModifiers::NONE || *modifiers == KeyModifiers::SHIFT)
                 && is_jump_command(code) =>
@@ -223,10 +305,13 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                     });
                 } else if let InputState::AccumulateDigits(digits) = input_state {
                     let count = digits.parse().unwrap();
-                    input_state = InputState::DigitsAndCommand(count, KeyData {
-                        key_code: *code,
-                        modifiers: *modifiers,
-                    });
+                    input_state = InputState::DigitsAndCommand(
+                        count,
+                        KeyData {
+                            key_code: *code,
+                            modifiers: *modifiers,
+                        },
+                    );
                 } else if let InputState::CommandComposing(composing) = input_state {
                     if composing.key_code == *code {
                         // dd, cc, yy, etc.
@@ -559,6 +644,42 @@ mod tests {
                 range: Some(super::JumpCommandData {
                     count: 4,
                     key_code: KeyCode::Char('j'),
+                    modifiers: KeyModifiers::NONE,
+                }),
+            })
+        );
+    }
+
+    #[test]
+    fn test_gg() {
+        use super::compose;
+        use super::InputState;
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let mut key_events: Vec<KeyEvent> = Vec::new();
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('g'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        });
+        key_events.push(KeyEvent {
+            code: KeyCode::Char('g'),
+            modifiers: KeyModifiers::NONE,
+            kind: crossterm::event::KeyEventKind::Press,
+            state: crossterm::event::KeyEventState::NONE,
+        });
+
+        let input_state = compose(&key_events);
+        assert_eq!(
+            input_state,
+            InputState::CommandCompleted(super::CommandData {
+                count: 1,
+                key_code: KeyCode::Char('g'),
+                modifiers: KeyModifiers::NONE,
+                range: Some(super::JumpCommandData {
+                    count: 1,
+                    key_code: KeyCode::Char('g'),
                     modifiers: KeyModifiers::NONE,
                 }),
             })

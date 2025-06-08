@@ -59,6 +59,9 @@ impl Command for GoToLastLine {
             .map(|line| line.chars().count().saturating_sub(1).min(current_col))
             .unwrap_or(0);
         editor.move_cursor_to(target, dest_col)?;
+        if target == max_row {
+            editor.scroll_to_cursor_bottom();
+        }
         Ok(())
     }
 

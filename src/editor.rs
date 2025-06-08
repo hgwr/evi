@@ -579,6 +579,9 @@ impl Editor {
         start_row: usize,
         direction: SearchDirection,
     ) -> Option<usize> {
+        if self.buffer.lines.is_empty() {
+            return None;
+        }
         match direction {
             SearchDirection::Forward => {
                 for i in start_row..self.buffer.lines.len() {

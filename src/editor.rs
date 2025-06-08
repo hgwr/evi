@@ -1151,7 +1151,13 @@ impl Editor {
             }
         };
 
-        line_number as usize
+        // Negative results may occur for relative addresses (e.g., "-1"). Clamp
+        // to zero before converting to `usize` to avoid underflow.
+        if line_number < 0 {
+            0
+        } else {
+            line_number as usize
+        }
     }
 }
 
@@ -1218,6 +1224,39 @@ mod tests {
             editor
                 .get_line_number_from(&LineAddressType::Absolute(SimpleLineAddressType::AllLines)),
             2
+        );
+    }
+
+    #[test]
+    fn test_editor_get_line_number_from_relative_negative() {
+        let mut editor = Editor::new();
+        editor.buffer.lines = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+
+        // Offsetting from the current line at the top should clamp to the first line.
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Relative(
+                SimpleLineAddressType::CurrentLine,
+                -1,
+            )),
+            0
+        );
+
+        // Negative offset that stays within bounds should work normally.
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Relative(
+                SimpleLineAddressType::LastLine,
+                -1,
+            )),
+            1
+        );
+
+        // Large negative offsets should also clamp to zero.
+        assert_eq!(
+            editor.get_line_number_from(&LineAddressType::Relative(
+                SimpleLineAddressType::FirstLine,
+                -3,
+            )),
+            0
         );
     }
 

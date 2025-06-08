@@ -790,7 +790,7 @@ impl Editor {
     }
 
     pub fn max_content_row_index(&self) -> u16 {
-        self.content_height() - 1
+        self.content_height().saturating_sub(1)
     }
 
     pub fn page_down(&mut self) -> GenericResult<()> {

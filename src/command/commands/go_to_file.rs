@@ -56,7 +56,7 @@ impl Command for GoToLastLine {
             .buffer
             .lines
             .get(target)
-            .map(|line| line.chars().count().min(current_col))
+            .map(|line| line.chars().count().saturating_sub(1).min(current_col))
             .unwrap_or(0);
         editor.move_cursor_to(target, dest_col)?;
         Ok(())

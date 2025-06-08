@@ -10,7 +10,11 @@ from .test_motion_commands import get_screen_and_cursor, goto
 def _parse_screen(screen: str) -> dict[int, str]:
     """Return a mapping from row number to text content."""
     matches = re.findall(r"\x1b\[(\d+);(\d+)H([^\x1b]*)", screen)
-    return {int(row): text for row, _col, text in matches}
+    rows: dict[int, str] = {}
+    for row, _col, text in matches:
+        if text:
+            rows[int(row)] = text
+    return rows
 
 
 def test_long_line_wrapping():
@@ -130,10 +134,10 @@ def test_G_on_long_wrapped_file_no_extra_blank_lines():
         screen, pos = get_screen_and_cursor(child)
         lines_map = _parse_screen(screen)
 
-        # Expect the last line to occupy rows 22 and 23 without a blank line
-        assert lines_map[22] == lines[-1][:80]
-        assert lines_map[23] == lines[-1][80:]
-        assert pos == (22, 1)
+        # Expect the last line to occupy the last two rows without a blank line
+        assert lines_map[21] == lines[-1][:80]
+        assert lines_map[22] == lines[-1][80:]
+        assert pos == (21, 1)
 
         child.send(":q!\r")
         child.expect(pexpect.EOF)

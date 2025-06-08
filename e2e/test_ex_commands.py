@@ -183,3 +183,9 @@ def test_move_reverse_range_repeat():
 def test_print_range():
     result = run_commands([':1,3p\r'], initial_content='1\n2\n3\n4\n', exit_cmd=':q!\r')
     assert result.splitlines() == ['1', '2', '3', '4']
+
+
+def test_global_print():
+    content = 'foo\nbar\nfoo\n'
+    result = run_commands([':g/foo/p\r'], initial_content=content, exit_cmd=':q!\r')
+    assert result.splitlines() == ['foo', 'bar', 'foo']

@@ -13,6 +13,7 @@ pub fn is_jump_command(key: &KeyCode) -> bool {
         Char(';') | Char(',') | Char(')') | Char('(') => true,
         Char('}') | Char('{') | Char(']') | Char('[') => true,
         Char('%') | Char('n') | Char('N') => true,
+        KeyCode::PageDown | KeyCode::PageUp => true,
         _ => false,
     }
 }

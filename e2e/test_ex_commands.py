@@ -81,7 +81,7 @@ def test_copy_line_undo():
         env = os.environ.copy()
         env.setdefault('TERM', 'xterm')
         child = pexpect.spawn(EVI_BIN, [path], env=env, encoding='utf-8')
-        child.delaybeforesend = float(os.getenv('EVI_DELAY_BEFORE_SEND', '0.01'))
+        child.delaybeforesend = float(os.getenv('EVI_DELAY_BEFORE_SEND', '0.1'))
 
         get_screen_and_cursor(child)
         child.send(':1co5\r')

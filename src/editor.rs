@@ -822,6 +822,38 @@ impl Editor {
         Ok(())
     }
 
+    fn line_height(&self, row: usize) -> usize {
+        let width = self.terminal_size.width as usize;
+        self.buffer
+            .lines
+            .get(row)
+            .map(|line| {
+                let len = line.chars().count();
+                if len == 0 {
+                    1
+                } else {
+                    (len - 1) / width + 1
+                }
+            })
+            .unwrap_or(1)
+    }
+
+    pub fn scroll_to_cursor_bottom(&mut self) {
+        let height = self.content_height() as usize;
+        let mut rows_needed = self.line_height(self.cursor_position_in_buffer.row);
+        let mut start = self.cursor_position_in_buffer.row;
+        while start > 0 && rows_needed < height {
+            start -= 1;
+            rows_needed += self.line_height(start);
+        }
+        self.window_position_in_buffer.row = start;
+        let mut pos = 0usize;
+        for r in start..self.cursor_position_in_buffer.row {
+            pos += self.line_height(r);
+        }
+        self.cursor_position_on_screen.row = pos as u16;
+    }
+
     pub fn display_visual_bell(&mut self) -> GenericResult<()> {
         let mut stdout = std::io::stdout();
         stdout.write_all(b"\x07")?;

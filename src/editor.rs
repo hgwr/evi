@@ -679,7 +679,11 @@ impl Editor {
     pub fn execute_command(&mut self, command_data: CommandData) -> GenericResult<()> {
         let mut command = command_factory(&command_data);
         if !command.is_modeful() && command.is_reusable() {
-            let repeat_count = if command_data.count == 0 { 1 } else { command_data.count };
+            let repeat_count = if command_data.count == 0 {
+                1
+            } else {
+                command_data.count
+            };
             for _ in 0..repeat_count {
                 command.execute(self)?;
             }
@@ -696,7 +700,10 @@ impl Editor {
             if command.is::<GoToFirstLine>() || command.is::<GoToLastLine>() {
                 command.execute(self)?;
                 if command.is_undoable() {
-                    let chunk = vec![ExecutedCommand { command_data, command }];
+                    let chunk = vec![ExecutedCommand {
+                        command_data,
+                        command,
+                    }];
                     self.last_command = Some(chunk.clone());
                     self.command_history.push(chunk);
                 }
@@ -706,7 +713,11 @@ impl Editor {
                     count: 1,
                     ..command_data
                 };
-                let repeat_count = if command_data.count == 0 { 1 } else { command_data.count };
+                let repeat_count = if command_data.count == 0 {
+                    1
+                } else {
+                    command_data.count
+                };
                 for _ in 0..repeat_count {
                     let mut command = command_factory(&disassemble_command_data);
                     command.execute(self)?;
@@ -842,9 +853,13 @@ impl Editor {
         let height = self.content_height() as usize;
         let mut rows_needed = self.line_height(self.cursor_position_in_buffer.row);
         let mut start = self.cursor_position_in_buffer.row;
-        while start > 0 && rows_needed < height {
+        while start > 0 {
+            let next_height = self.line_height(start - 1);
+            if rows_needed + next_height > height {
+                break;
+            }
             start -= 1;
-            rows_needed += self.line_height(start);
+            rows_needed += next_height;
         }
         self.window_position_in_buffer.row = start;
         let mut pos = 0usize;
@@ -1352,5 +1367,16 @@ mod tests {
 
         editor.page_up().unwrap();
         assert_eq!(editor.cursor_position_in_buffer.row, 0);
+    }
+
+    #[test]
+    fn test_scroll_to_cursor_bottom_wrapped_lines() {
+        let mut editor = Editor::new();
+        editor.resize_terminal(10, 5); // content height is 4
+        editor.buffer.lines = vec!["a".repeat(30), "b".repeat(15)];
+        editor.move_cursor_to(1, 0).unwrap();
+        editor.scroll_to_cursor_bottom();
+        assert_eq!(editor.window_position_in_buffer.row, 1);
+        assert_eq!(editor.cursor_position_on_screen.row, 0);
     }
 }

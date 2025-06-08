@@ -155,15 +155,7 @@ impl Command for PreviousLine {
 
             editor.cursor_position_in_buffer.row -= 1;
 
-            let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
-            let num_of_chars = line.chars().count();
-            let num_of_lines_on_screen = if num_of_chars == 0 {
-                1
-            } else if num_of_chars % editor.terminal_size.width as usize == 0 {
-                num_of_chars / editor.terminal_size.width as usize
-            } else {
-                num_of_chars / editor.terminal_size.width as usize + 1
-            };
+            let num_of_lines_on_screen = editor.line_height(editor.cursor_position_in_buffer.row);
 
             if editor.cursor_position_on_screen.row >= num_of_lines_on_screen as u16 {
                 editor.cursor_position_on_screen.row -= num_of_lines_on_screen as u16;
@@ -310,5 +302,35 @@ impl Command for PageUp {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::editor::Editor;
+
+    #[test]
+    fn next_previous_line_wrapping() {
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["a".repeat(60), "b".repeat(120), "c".repeat(60)];
+
+        let mut next_line = NextLine {};
+        next_line.execute(&mut editor).unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.row, 1);
+        assert_eq!(editor.cursor_position_on_screen.row, 1);
+        assert_eq!(editor.window_position_in_buffer.row, 0);
+
+        next_line.execute(&mut editor).unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.row, 2);
+        assert_eq!(editor.cursor_position_on_screen.row, 3);
+        assert_eq!(editor.window_position_in_buffer.row, 0);
+
+        let mut previous_line = PreviousLine {};
+        previous_line.execute(&mut editor).unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.row, 1);
+        assert_eq!(editor.cursor_position_on_screen.row, 1);
+        assert_eq!(editor.window_position_in_buffer.row, 0);
     }
 }

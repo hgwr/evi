@@ -97,6 +97,16 @@ def test_motion_w():
     )
 
 
+def test_motion_w_punctuation():
+    run_motion_test(
+        file_content="foo,bar",
+        terminal_size=(24, 80),
+        initial_cursor_pos=(1, 1),
+        command_to_test="w",
+        expected_cursor_pos=(1, 5),
+    )
+
+
 def test_motion_dollar():
     run_motion_test(
         file_content="hello world\n",
@@ -113,6 +123,16 @@ def test_motion_l():
         initial_cursor_pos=(1, 1),
         command_to_test="l",
         expected_cursor_pos=(1, 2),
+    )
+
+
+def test_motion_l_at_eol():
+    run_motion_test(
+        file_content="abc\n",
+        terminal_size=(24, 80),
+        initial_cursor_pos=(1, 3),
+        command_to_test="l",
+        expected_cursor_pos=(1, 3),
     )
 
 
@@ -145,6 +165,16 @@ def test_motion_gg():
         initial_cursor_pos=(3, 1),
         command_to_test="gg",
         expected_cursor_pos=(1, 1),
+    )
+
+
+def test_motion_count_gg():
+    run_motion_test(
+        file_content="line1\nline2\nline3\n",
+        terminal_size=(24, 80),
+        initial_cursor_pos=(1, 1),
+        command_to_test="2gg",
+        expected_cursor_pos=(2, 1),
     )
 
 # def test_motion_ctrl_b():

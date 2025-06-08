@@ -806,10 +806,12 @@ impl Editor {
 
     pub fn page_down(&mut self) -> GenericResult<()> {
         let height = self.content_height() as usize;
+        let overlap = if height > 1 { 2 } else { 1 };
+        let scroll = height.saturating_sub(overlap);
         let col = self.cursor_position_in_buffer.col;
         let max_top = self.buffer.lines.len().saturating_sub(1);
         self.window_position_in_buffer.row =
-            (self.window_position_in_buffer.row + height).min(max_top);
+            (self.window_position_in_buffer.row + scroll).min(max_top);
         self.cursor_position_in_buffer.row = self.window_position_in_buffer.row;
         self.cursor_position_in_buffer.col = 0;
         self.cursor_position_on_screen.row = 0;
@@ -821,9 +823,11 @@ impl Editor {
 
     pub fn page_up(&mut self) -> GenericResult<()> {
         let height = self.content_height() as usize;
+        let overlap = if height > 1 { 2 } else { 1 };
+        let scroll = height.saturating_sub(overlap);
         let col = self.cursor_position_in_buffer.col;
         self.window_position_in_buffer.row =
-            self.window_position_in_buffer.row.saturating_sub(height);
+            self.window_position_in_buffer.row.saturating_sub(scroll);
         self.cursor_position_in_buffer.row = self.window_position_in_buffer.row;
         self.cursor_position_in_buffer.col = 0;
         self.cursor_position_on_screen.row = 0;
@@ -1402,7 +1406,7 @@ mod tests {
         ];
 
         editor.page_down().unwrap();
-        assert_eq!(editor.cursor_position_in_buffer.row, 3);
+        assert_eq!(editor.cursor_position_in_buffer.row, 1);
 
         editor.page_up().unwrap();
         assert_eq!(editor.cursor_position_in_buffer.row, 0);

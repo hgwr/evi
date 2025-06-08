@@ -28,6 +28,8 @@ impl Command for ForwardChar {
                     editor.window_position_in_buffer.row += 1;
                 }
             }
+        } else {
+            editor.display_visual_bell()?;
         }
         Ok(())
     }
@@ -184,19 +186,21 @@ impl Command for ForwardWord {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let mut forward_char = ForwardChar {};
         let mut num_of_chars = editor.get_num_of_current_line_chars();
+
         forward_char.execute(editor)?;
+
         'outer: loop {
             if editor.cursor_position_in_buffer.col + 1 < num_of_chars {
                 while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
                     let c = editor.get_current_char().unwrap();
-                    if c.is_whitespace() {
+                    if !c.is_alphanumeric() && c != '_' {
                         break;
                     }
                     forward_char.execute(editor)?;
                 }
                 while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
                     let c = editor.get_current_char().unwrap();
-                    if !c.is_whitespace() {
+                    if c.is_alphanumeric() || c == '_' {
                         break 'outer;
                     }
                     forward_char.execute(editor)?;
@@ -209,7 +213,7 @@ impl Command for ForwardWord {
                 num_of_chars = editor.get_num_of_current_line_chars();
                 while editor.cursor_position_in_buffer.col + 1 < num_of_chars {
                     let c = editor.get_current_char().unwrap();
-                    if !c.is_whitespace() {
+                    if c.is_alphanumeric() || c == '_' {
                         break 'outer;
                     }
                     forward_char.execute(editor)?;

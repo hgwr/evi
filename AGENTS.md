@@ -50,8 +50,8 @@ pip install -r e2e/requirements.txt
 
 #### Run e2e tests
 
-To run the full suite of e2e tests:
+To run the full suite of e2e tests using `pytest-xdist` for parallel execution:
 
 ```sh
-pytest e2e --verbose
+pytest -n auto e2e --verbose
 ```

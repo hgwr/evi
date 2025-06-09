@@ -21,4 +21,5 @@ os.environ.setdefault('EVI_PEXPECT_TIMEOUT', '0.2')
 
 @pytest.fixture(scope='session', autouse=True)
 def build_evi():
-    subprocess.run(['cargo', 'build'], cwd=ROOT_DIR, check=True)
+    if not os.path.exists(EVI_BIN):
+        subprocess.run(['cargo', 'build'], cwd=ROOT_DIR, check=True)

@@ -123,6 +123,16 @@ def test_word_motion_w_b():
     assert result.strip() == 'ne wo'
 
 
+def test_insert_unicode_undo():
+    result = run_commands(['i', 'あい\nう', '\x1b', 'u'], initial_content='foo\n')
+    assert result.strip() == 'foo'
+
+
+def test_append_unicode_undo():
+    result = run_commands(['a', '🍣', '\x1b', 'u'], initial_content='bar\n')
+    assert result.strip() == 'bar'
+
+
 def _parse_screen(screen: str) -> dict[int, str]:
     import re
     rows: dict[int, str] = {}

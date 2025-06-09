@@ -66,7 +66,7 @@ impl Command for Insert {
                     let new_line: String = line
                         .chars()
                         .take(col)
-                        .chain(line.chars().skip(col + text.len()))
+                        .chain(line.chars().skip(col + text.chars().count()))
                         .collect();
                     editor.buffer.lines[row] = new_line;
                 } else if input_text_lines.len() >= 2 {
@@ -75,7 +75,7 @@ impl Command for Insert {
                     let last_line = editor.buffer.lines[row + input_text_lines.len() - 1].clone();
                     let new_first_line: String = first_line.chars().take(col).collect();
                     let new_last_line: String =
-                        last_line.chars().skip(last_input_line.len()).collect();
+                        last_line.chars().skip(last_input_line.chars().count()).collect();
                     editor.buffer.lines[row] = new_first_line + new_last_line.as_str();
                     for _ in 0..input_text_lines.len() - 1 {
                         editor.buffer.lines.remove(row + 1);

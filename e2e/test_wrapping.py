@@ -1,6 +1,7 @@
 import os
 import re
 import tempfile
+import time
 import pexpect
 
 from .conftest import EVI_BIN
@@ -60,6 +61,8 @@ def test_cursor_j_k_on_wrapped_line():
         # Ensure the editor has finished drawing
         get_screen_and_cursor(child)
         goto(child, 1, 1)
+        time.sleep(0.05)
+        time.sleep(0.05)
         # Wait for the cursor to settle before sending movement commands
         get_screen_and_cursor(child)
 
@@ -76,6 +79,7 @@ def test_cursor_j_k_on_wrapped_line():
         assert pos == (2, 1)
 
         child.send("k")
+        time.sleep(0.05)
         _, pos = get_screen_and_cursor(child)
         assert pos == (1, 1)
 
@@ -105,6 +109,7 @@ def test_cursor_j_j_k_k_round_trip():
         child.send("j")
         child.send("k")
         child.send("k")
+        time.sleep(0.05)
         _, pos = get_screen_and_cursor(child)
         assert pos == (1, 1)
 

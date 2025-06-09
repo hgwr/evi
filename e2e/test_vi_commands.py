@@ -164,7 +164,7 @@ def test_invalid_command_shows_status_line(tmp_path):
     # Send an invalid command sequence and check status line
     child.send("dZ")
     child.expect("\x07")
-    child.expect("\?")
+    child.expect(r"\?")
 
     child.send(":q!\r")
     child.expect(pexpect.EOF)

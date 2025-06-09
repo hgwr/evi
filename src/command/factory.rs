@@ -19,6 +19,7 @@ use super::commands::append_line_end::AppendLineEnd;
 use super::commands::search::RepeatSearch;
 use super::commands::undo::Undo;
 use super::commands::yank::Yank;
+use super::commands::mark::{SetMark, JumpMark};
 
 pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
     match command_data {
@@ -196,6 +197,15 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('J'),
             ..
         } => Box::new(JoinLines::default()),
+
+        CommandData {
+            key_code: KeyCode::Char('m'),
+            ..
+        } => Box::new(SetMark {}),
+        CommandData {
+            key_code: KeyCode::Char('\''),
+            ..
+        } => Box::new(JumpMark {}),
 
         // delete commands
         CommandData {

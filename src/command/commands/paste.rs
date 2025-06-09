@@ -11,6 +11,8 @@ pub struct Paste {
     pub before: bool,
     pub editor_cursor_data: Option<EditorCursorData>,
     pub text: Option<String>,
+    pub register: Option<char>,
+    pub linewise: bool,
 }
 
 impl Default for Paste {
@@ -19,6 +21,8 @@ impl Default for Paste {
             before: false,
             editor_cursor_data: None,
             text: None,
+            register: None,
+            linewise: false,
         }
     }
 }
@@ -48,13 +52,15 @@ impl Command for Paste {
     }
 
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
-        let text = editor.unnamed_register.clone();
+        let reg = editor.take_pending_register().or(self.register);
+        let (text, linewise) = editor.fetch_register(reg);
         if text.is_empty() {
             return Ok(());
         }
         self.text = Some(text.clone());
+        self.linewise = linewise;
         self.editor_cursor_data = Some(editor.snapshot_cursor_data());
-        if editor.unnamed_register_linewise {
+        if linewise {
             let row = if self.before {
                 editor.cursor_position_in_buffer.row
             } else {
@@ -86,7 +92,7 @@ impl Command for Paste {
 
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if let (Some(orig), Some(text)) = (self.editor_cursor_data, &self.text) {
-            if editor.unnamed_register_linewise {
+            if self.linewise {
                 let row = if self.before {
                     orig.cursor_position_in_buffer.row
                 } else {
@@ -117,6 +123,8 @@ impl Command for Paste {
             before: self.before,
             editor_cursor_data: None,
             text: self.text.clone(),
+            register: self.register,
+            linewise: self.linewise,
         });
         new_cmd.execute(editor)?;
         Ok(Some(new_cmd))

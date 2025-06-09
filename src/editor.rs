@@ -116,6 +116,9 @@ pub struct Editor {
     pub last_find: Option<FindCharInfo>,
     pub pending_replace_char_count: usize,
     pub marks: HashMap<char, Mark>,
+    pub registers: HashMap<char, String>,
+    pub registers_linewise: HashMap<char, bool>,
+    pub pending_register: Option<char>,
 }
 
 impl Editor {
@@ -151,6 +154,9 @@ impl Editor {
             last_find: None,
             pending_replace_char_count: 1,
             marks: HashMap::new(),
+            registers: HashMap::new(),
+            registers_linewise: HashMap::new(),
+            pending_register: None,
         }
     }
 
@@ -677,6 +683,32 @@ impl Editor {
         self.cursor_position_on_screen = cursor_data.cursor_position_on_screen;
         self.cursor_position_in_buffer = cursor_data.cursor_position_in_buffer;
         self.window_position_in_buffer = cursor_data.window_position_in_buffer;
+    }
+
+    pub fn take_pending_register(&mut self) -> Option<char> {
+        let r = self.pending_register;
+        self.pending_register = None;
+        r
+    }
+
+    pub fn store_register(&mut self, reg: Option<char>, text: String, linewise: bool) {
+        self.unnamed_register = text.clone();
+        self.unnamed_register_linewise = linewise;
+        if let Some(ch) = reg {
+            self.registers.insert(ch, text.clone());
+            self.registers_linewise.insert(ch, linewise);
+        }
+    }
+
+    pub fn fetch_register(&self, reg: Option<char>) -> (String, bool) {
+        match reg {
+            Some(ch) => {
+                let text = self.registers.get(&ch).cloned().unwrap_or_default();
+                let lw = *self.registers_linewise.get(&ch).unwrap_or(&false);
+                (text, lw)
+            }
+            None => (self.unnamed_register.clone(), self.unnamed_register_linewise),
+        }
     }
 
     pub fn move_cursor_to(&mut self, row: usize, col: usize) -> GenericResult<()> {
@@ -1575,6 +1607,42 @@ mod tests {
 
         // paste below last line
         editor.move_cursor_to(1, 0).unwrap();
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('p'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: None,
+        };
+        editor.execute_command(cmd).unwrap();
+        assert_eq!(editor.buffer.lines[2], "hello world");
+    }
+
+    #[test]
+    fn test_named_register_yank_and_paste() {
+        use crate::command::base::{CommandData, JumpCommandData};
+        use crossterm::event::KeyCode;
+
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["hello world".to_string(), "second".to_string()];
+
+        // set pending register to 'a'
+        editor.pending_register = Some('a');
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('y'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: Some(JumpCommandData {
+                count: 1,
+                key_code: KeyCode::Char('y'),
+                modifiers: crossterm::event::KeyModifiers::NONE,
+            }),
+        };
+        editor.execute_command(cmd).unwrap();
+        assert_eq!(editor.registers.get(&'a').unwrap(), "hello world\n");
+
+        editor.move_cursor_to(1, 0).unwrap();
+        editor.pending_register = Some('a');
         let cmd = CommandData {
             count: 1,
             key_code: KeyCode::Char('p'),

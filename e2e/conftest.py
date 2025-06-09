@@ -12,8 +12,8 @@ os.environ.setdefault('EVI_DELAY_BEFORE_SEND', '0.1')
 # longer to output screen updates. ``EVI_PEXPECT_TIMEOUT`` controls how long the
 # helper functions wait when reading from the spawned ``evi`` process.  The
 # default of ``0.3`` seconds is sometimes too short here which leads to spurious
-# timeouts.  Increase it slightly unless it has been configured explicitly.
-os.environ.setdefault('EVI_PEXPECT_TIMEOUT', '1')
+# timeouts.  Increase it to 2 seconds unless it has been configured explicitly.
+os.environ.setdefault('EVI_PEXPECT_TIMEOUT', '2')
 
 @pytest.fixture(scope='session', autouse=True)
 def build_evi():

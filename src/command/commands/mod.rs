@@ -23,6 +23,7 @@ pub mod repeat;
 pub mod replace;
 pub mod replace_char;
 pub mod search;
+pub mod mark;
 pub mod substitute;
 pub mod undo;
 pub mod write;

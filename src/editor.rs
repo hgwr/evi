@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -62,6 +63,8 @@ pub enum Mode {
         inclusive: bool,
         count: usize,
     },
+    SetMark,
+    JumpMark,
     ExCommand,
     Search(SearchDirection),
 }
@@ -77,6 +80,12 @@ pub struct FindCharInfo {
     pub direction: SearchDirection,
     pub inclusive: bool,
     pub target: char,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Mark {
+    pub file_index: usize,
+    pub position: CursorPositionInBuffer,
 }
 
 pub struct Editor {
@@ -106,6 +115,7 @@ pub struct Editor {
     pub last_search_direction: Option<SearchDirection>,
     pub last_find: Option<FindCharInfo>,
     pub pending_replace_char_count: usize,
+    pub marks: HashMap<char, Mark>,
 }
 
 impl Editor {
@@ -140,6 +150,7 @@ impl Editor {
             last_search_direction: None,
             last_find: None,
             pending_replace_char_count: 1,
+            marks: HashMap::new(),
         }
     }
 
@@ -214,6 +225,10 @@ impl Editor {
                 self.pending_replace_char_count = 1;
             }
             Mode::FindChar { .. } => {
+                self.mode = Mode::Command;
+                self.status_line = "".to_string();
+            }
+            Mode::SetMark | Mode::JumpMark => {
                 self.mode = Mode::Command;
                 self.status_line = "".to_string();
             }
@@ -315,6 +330,11 @@ impl Editor {
                 self.status_line = "-- INSERT --".to_string();
                 self.last_input_string = String::new();
             }
+            Mode::SetMark | Mode::JumpMark => {
+                self.mode = Mode::Insert;
+                self.status_line = "-- INSERT --".to_string();
+                self.last_input_string = String::new();
+            }
         }
     }
 
@@ -359,6 +379,11 @@ impl Editor {
                 self.status_line = "-- REPLACE --".to_string();
                 self.last_input_string = String::new();
             }
+            Mode::SetMark | Mode::JumpMark => {
+                self.mode = Mode::Replace;
+                self.status_line = "-- REPLACE --".to_string();
+                self.last_input_string = String::new();
+            }
         }
     }
 
@@ -387,6 +412,22 @@ impl Editor {
 
     pub fn is_find_char_mode(&self) -> bool {
         matches!(self.mode, Mode::FindChar { .. })
+    }
+
+    pub fn set_mark_mode(&mut self) {
+        self.mode = Mode::SetMark;
+    }
+
+    pub fn set_jump_mark_mode(&mut self) {
+        self.mode = Mode::JumpMark;
+    }
+
+    pub fn is_set_mark_mode(&self) -> bool {
+        matches!(self.mode, Mode::SetMark)
+    }
+
+    pub fn is_jump_mark_mode(&self) -> bool {
+        matches!(self.mode, Mode::JumpMark)
     }
 
     pub fn is_replace_mode(&self) -> bool {
@@ -1140,6 +1181,29 @@ impl Editor {
         Ok(())
     }
 
+    pub fn set_mark(&mut self, c: char) {
+        let mark = Mark {
+            file_index: self.current_file_index,
+            position: self.cursor_position_in_buffer,
+        };
+        self.marks.insert(c, mark);
+    }
+
+    pub fn jump_to_mark(&mut self, c: char) -> GenericResult<()> {
+        if let Some(mark) = self.marks.get(&c) {
+            if mark.file_index != self.current_file_index {
+                if let Some(path) = self.editing_file_paths.get(mark.file_index) {
+                    self.buffer = Buffer::from_file(path)?;
+                    self.current_file_index = mark.file_index;
+                }
+            }
+            self.move_cursor_to(mark.position.row, mark.position.col)?;
+        } else {
+            self.display_visual_bell()?;
+        }
+        Ok(())
+    }
+
     pub fn append_new_line(&mut self) -> GenericResult<()> {
         let rest_of_line = self.buffer.lines[self.cursor_position_in_buffer.row]
             .chars()
@@ -1562,5 +1626,45 @@ mod tests {
         assert!(editor.is_insert_mode());
         assert_eq!(editor.cursor_position_in_buffer.col, 3);
         assert_eq!(editor.cursor_position_on_screen.col, 3);
+    }
+
+    #[test]
+    fn test_set_and_jump_mark() {
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["abc".to_string(), "def".to_string()];
+        editor.move_cursor_to(1, 1).unwrap();
+        editor.set_mark('a');
+        editor.move_cursor_to(0, 0).unwrap();
+        editor.jump_to_mark('a').unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.row, 1);
+        assert_eq!(editor.cursor_position_in_buffer.col, 1);
+    }
+
+    #[test]
+    fn test_jump_mark_across_files() {
+        use std::fs::write;
+        let tmp1 = NamedTempFile::new().unwrap();
+        write(tmp1.path(), "one\ntwo\n").unwrap();
+        let tmp2 = NamedTempFile::new().unwrap();
+        write(tmp2.path(), "alpha\nbeta\n").unwrap();
+
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.open_file(&tmp1.path().to_path_buf());
+        editor.open_file(&tmp2.path().to_path_buf());
+
+        // mark in first file
+        editor.current_file_index = 0;
+        editor.buffer = Buffer::from_file(&tmp1.path().to_path_buf()).unwrap();
+        editor.move_cursor_to(1, 0).unwrap();
+        editor.set_mark('a');
+
+        // switch to second file
+        editor.current_file_index = 1;
+        editor.buffer = Buffer::from_file(&tmp2.path().to_path_buf()).unwrap();
+        editor.jump_to_mark('a').unwrap();
+        assert_eq!(editor.current_file_index, 0);
+        assert_eq!(editor.cursor_position_in_buffer.row, 1);
     }
 }

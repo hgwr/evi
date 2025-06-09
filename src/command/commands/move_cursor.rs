@@ -87,6 +87,35 @@ impl Command for MoveBeginningOfLine {
 }
 
 #[derive(Clone)]
+pub struct MoveFirstNonBlank;
+impl Command for MoveFirstNonBlank {
+    fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
+        let row = editor.cursor_position_in_buffer.row;
+
+        let mut move_bol = MoveBeginningOfLine {};
+        move_bol.execute(editor)?;
+
+        let mut forward_char = ForwardChar {};
+        let num_chars = editor.buffer.lines[row].chars().count();
+        while editor.cursor_position_in_buffer.col < num_chars {
+            let c = editor.buffer.lines[row]
+                .chars()
+                .nth(editor.cursor_position_in_buffer.col)
+                .unwrap();
+            if !c.is_whitespace() {
+                break;
+            }
+            forward_char.execute(editor)?;
+        }
+        Ok(())
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+#[derive(Clone)]
 pub struct MoveEndOfLine;
 impl Command for MoveEndOfLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
@@ -336,5 +365,24 @@ mod tests {
         assert_eq!(editor.cursor_position_in_buffer.row, 1);
         assert_eq!(editor.cursor_position_on_screen.row, 1);
         assert_eq!(editor.window_position_in_buffer.row, 0);
+    }
+
+    #[test]
+    fn move_first_non_blank_basic() {
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["  abc".to_string()];
+
+        let mut forward_char = ForwardChar {};
+        for _ in 0..4 {
+            forward_char.execute(&mut editor).unwrap();
+        }
+
+        assert_eq!(editor.cursor_position_in_buffer.col, 4);
+
+        let mut caret = MoveFirstNonBlank {};
+        caret.execute(&mut editor).unwrap();
+        assert_eq!(editor.cursor_position_in_buffer.col, 2);
+        assert_eq!(editor.cursor_position_on_screen.col, 2);
     }
 }

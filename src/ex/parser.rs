@@ -379,35 +379,77 @@ impl Parser {
     }
 
     fn line_address(&mut self) -> Result<MyOption<LineAddressType>, GenericError> {
-        // number, "$", "^", ".", "%"
-        if self.accept_type(TokenType::Number) {
+        // Parse a base line address optionally followed by +/− offsets.
+        let base = if self.accept_type(TokenType::Number) {
             if let MyOption::Some(token) = self.pop() {
                 let number = token.lexeme.clone();
-                return Ok(MyOption::Some(LineAddressType::Absolute(
-                    SimpleLineAddressType::LineNumber(number.parse().unwrap()),
-                )));
+                Some(SimpleLineAddressType::LineNumber(number.parse().unwrap()))
+            } else {
+                None
             }
         } else if self.accept(TokenType::Symbol, "$") {
             self.pop();
-            return Ok(MyOption::Some(LineAddressType::Absolute(
-                SimpleLineAddressType::LastLine,
-            )));
+            Some(SimpleLineAddressType::LastLine)
         } else if self.accept(TokenType::Symbol, "^") {
             self.pop();
-            return Ok(MyOption::Some(LineAddressType::Absolute(
-                SimpleLineAddressType::FirstLine,
-            )));
+            Some(SimpleLineAddressType::FirstLine)
         } else if self.accept(TokenType::Symbol, ".") {
             self.pop();
-            return Ok(MyOption::Some(LineAddressType::Absolute(
-                SimpleLineAddressType::CurrentLine,
-            )));
+            Some(SimpleLineAddressType::CurrentLine)
         } else if self.accept(TokenType::Symbol, "%") {
             self.pop();
-            return Ok(MyOption::Some(LineAddressType::Absolute(
-                SimpleLineAddressType::AllLines,
-            )));
+            Some(SimpleLineAddressType::AllLines)
+        } else if self.accept_type(TokenType::AddressPattern) {
+            if let MyOption::Some(token) = self.pop() {
+                Some(SimpleLineAddressType::Pattern(Pattern {
+                    pattern: token.lexeme,
+                }))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        if let Some(mut addr) = base {
+            let mut offset: isize = 0;
+            loop {
+                if self.accept(TokenType::Symbol, "+") {
+                    self.pop();
+                    let value = if self.accept_type(TokenType::Number) {
+                        if let MyOption::Some(tok) = self.pop() {
+                            tok.lexeme.parse::<isize>().unwrap_or(1)
+                        } else {
+                            1
+                        }
+                    } else {
+                        1
+                    };
+                    offset += value;
+                } else if self.accept(TokenType::Symbol, "-") {
+                    self.pop();
+                    let value = if self.accept_type(TokenType::Number) {
+                        if let MyOption::Some(tok) = self.pop() {
+                            tok.lexeme.parse::<isize>().unwrap_or(1)
+                        } else {
+                            1
+                        }
+                    } else {
+                        1
+                    };
+                    offset -= value;
+                } else {
+                    break;
+                }
+            }
+
+            if offset != 0 {
+                return Ok(MyOption::Some(LineAddressType::Relative(addr, offset)));
+            } else {
+                return Ok(MyOption::Some(LineAddressType::Absolute(addr)));
+            }
         }
+
         Ok(MyOption::None)
     }
 
@@ -785,5 +827,39 @@ mod tests {
         let g = command.downcast_ref::<global::GlobalCommand>().unwrap();
         assert_eq!(g.pattern, "bar");
         assert!(g.invert);
+    }
+
+    #[test]
+    fn test_parse_print_range_dot_last() {
+        let input = ".,$p";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<print::PrintCommand>());
+        let print_command = command.downcast_ref::<print::PrintCommand>().unwrap();
+        assert_eq!(
+            print_command.line_range,
+            LineRange {
+                start: LineAddressType::Absolute(SimpleLineAddressType::CurrentLine),
+                end: LineAddressType::Absolute(SimpleLineAddressType::LastLine),
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_go_to_line_pattern_offset() {
+        let input = "/foo/+2";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<go_to_line::GoToLineCommand>());
+        let cmd = command.downcast_ref::<go_to_line::GoToLineCommand>().unwrap();
+        assert_eq!(
+            cmd.line_address,
+            LineAddressType::Relative(
+                SimpleLineAddressType::Pattern(Pattern {
+                    pattern: "foo".to_string(),
+                }),
+                2,
+            )
+        );
     }
 }

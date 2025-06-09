@@ -20,6 +20,8 @@ use crate::command::commands::exit;
 use crate::command::commands::print;
 use log::debug;
 use crate::command::commands::write;
+use crate::command::commands::reload::ReloadFileCommand;
+use crate::command::commands::read_file;
 
 enum MyOption<T> {
     Some(T),
@@ -170,6 +172,7 @@ impl Parser {
             | self.delete_command(&line_range)?
             | self.move_command(&line_range)?
             | self.copy_command(&line_range)?
+            | self.read_command(&line_range.start)?
             | self.global_command(&line_range)?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
@@ -238,6 +241,30 @@ impl Parser {
             copied_len: 0,
         };
         return Ok(MyOption::Some(Box::new(cp)));
+    }
+
+    fn read_command(
+        &mut self,
+        address: &LineAddressType,
+    ) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "r") {
+            self.pop();
+            if self.accept_type(TokenType::Filename) {
+                if let MyOption::Some(token) = self.pop() {
+                    let cmd = read_file::ReadFileCommand {
+                        address: address.clone(),
+                        filename: token.lexeme,
+                        inserted_idx: None,
+                        inserted_len: 0,
+                        editor_cursor_data: None,
+                    };
+                    return Ok(MyOption::Some(Box::new(cmd)));
+                }
+            } else {
+                return Err(self.error("filename expected"));
+            }
+        }
+        Ok(MyOption::None)
     }
 
     fn global_command(
@@ -529,6 +556,7 @@ tok.lexeme.parse::<isize>().map_err(|e| GenericError::from(format!("Invalid offs
             | self.w_exclamation_command()?
             | self.w_command()?
             | self.x_command()?
+            | self.e_exclamation_command()?
             | self.go_to_line_command()?;
         if let MyOption::Some(command) = command_opt {
             return Ok(MyOption::Some(command));
@@ -624,6 +652,23 @@ tok.lexeme.parse::<isize>().map_err(|e| GenericError::from(format!("Invalid offs
             self.pop();
             if self.accept_type(TokenType::EndOfInput) {
                 return Ok(MyOption::Some(Box::new(exit::ExitCommand {})));
+            } else {
+                self.undo_parse();
+            }
+        }
+        Ok(MyOption::None)
+    }
+
+    fn e_exclamation_command(&mut self) -> Result<MyOption<Box<dyn Command>>, GenericError> {
+        if self.accept(TokenType::Command, "e") {
+            self.pop();
+            if self.accept(TokenType::Command, "!") || self.accept(TokenType::Symbol, "!") {
+                self.pop();
+                if self.accept_type(TokenType::EndOfInput) {
+                    return Ok(MyOption::Some(Box::new(ReloadFileCommand {})));
+                } else {
+                    self.undo_parse();
+                }
             } else {
                 self.undo_parse();
             }
@@ -861,5 +906,24 @@ mod tests {
                 2,
             )
         );
+    }
+
+    #[test]
+    fn test_parse_e_exclamation_command() {
+        let input = "e!";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<ReloadFileCommand>());
+    }
+
+    #[test]
+    fn test_parse_read_command() {
+        let input = "1r foo.txt";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<read_file::ReadFileCommand>());
+        let cmd = command.downcast_ref::<read_file::ReadFileCommand>().unwrap();
+        assert_eq!(cmd.filename, "foo.txt");
+        assert_eq!(cmd.address, LineAddressType::Absolute(SimpleLineAddressType::LineNumber(1)));
     }
 }

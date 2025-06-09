@@ -9,6 +9,7 @@ use crate::generic_error::GenericResult;
 pub struct Yank {
     pub jump_command_data_opt: Option<JumpCommandData>,
     pub editor_cursor_data: Option<EditorCursorData>,
+    pub register: Option<char>,
 }
 
 impl Default for Yank {
@@ -16,6 +17,7 @@ impl Default for Yank {
         Self {
             jump_command_data_opt: None,
             editor_cursor_data: None,
+            register: None,
         }
     }
 }
@@ -31,8 +33,9 @@ impl Command for Yank {
             let start = region.start.cursor_position_in_buffer;
             let end = region.end.cursor_position_in_buffer;
             let text = editor.buffer.yank(start, end)?;
-            editor.unnamed_register = text;
-            editor.unnamed_register_linewise = start.col == 0 && end.col == 0;
+            let linewise = start.col == 0 && end.col == 0;
+            let reg = editor.take_pending_register().or(self.register);
+            editor.store_register(reg, text, linewise);
             editor.restore_cursor_data(region.start);
             self.editor_cursor_data = Some(region.start);
         }

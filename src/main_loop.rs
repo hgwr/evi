@@ -15,6 +15,7 @@ use crate::generic_error::GenericResult;
 pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
     let mut stdout = stdout();
     let mut event_keys: Vec<KeyEvent> = Vec::new();
+    let mut awaiting_register = false;
 
     terminal::enable_raw_mode()?;
 
@@ -28,6 +29,19 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
             Ok(Event::Key(key_event)) => {
                 if editor.is_command_mode() {
                     info!("Key event: {:?}", key_event);
+                    if awaiting_register {
+                        if let event::KeyCode::Char(c) = key_event.code {
+                            editor.pending_register = Some(c);
+                        } else {
+                            editor.status_line = "?".to_string();
+                        }
+                        awaiting_register = false;
+                        continue;
+                    }
+                    if event_keys.len() == 0 && key_event.code == event::KeyCode::Char('"') {
+                        awaiting_register = true;
+                        continue;
+                    }
                     if event_keys.len() == 0 && key_event.code == event::KeyCode::Char(':') {
                         // ex command begin
                         editor.set_ex_command_mode();

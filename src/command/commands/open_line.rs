@@ -111,6 +111,7 @@ impl Command for OpenLine {
         }
         let mut move_beginning = crate::command::commands::move_cursor::MoveBeginningOfLine {};
         move_beginning.execute(editor)?;
+        editor.set_insert_mode();
 
         if let Some(input_text) = &self.text {
             for c in input_text.chars() {

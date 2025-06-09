@@ -78,6 +78,8 @@ def run_motion_test(
 
         # Move to the requested starting position
         goto(child, initial_cursor_pos[0], initial_cursor_pos[1])
+        # Wait for the cursor to settle in slower environments
+        get_screen_and_cursor(child)
 
         # Send the command to test
         child.send(command_to_test)

@@ -137,32 +137,48 @@ impl Command for MoveEndOfLine {
 pub struct NextLine;
 impl Command for NextLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
-        let next_row = editor.cursor_position_in_buffer.row + 1;
-        if next_row < editor.buffer.lines.len() {
-            let current_cursor_col_in_buffer = editor.cursor_position_in_buffer.col;
-            let mut move_end_of_line = MoveEndOfLine {};
-            move_end_of_line.execute(editor)?;
+        let width = editor.terminal_size.width as usize;
+        let current_row = editor.cursor_position_in_buffer.row;
+        let current_col = editor.cursor_position_in_buffer.col;
+        let line_height = editor.line_height(current_row);
 
-            editor.cursor_position_in_buffer.row = next_row;
-            if editor.cursor_position_on_screen.row < editor.max_content_row_index() {
-                editor.cursor_position_on_screen.row += 1;
-            } else {
-                editor.window_position_in_buffer.row += 1;
+        if current_col / width + 1 < line_height {
+            let dest_col = (current_col + width)
+                .min(editor.get_num_of_current_line_chars().saturating_sub(1));
+            if dest_col > current_col {
+                let mut f = ForwardChar {};
+                for _ in 0..(dest_col - current_col) {
+                    f.execute(editor)?;
+                }
             }
+        } else {
+            let next_row = current_row + 1;
+            if next_row < editor.buffer.lines.len() {
+                let current_cursor_col_in_buffer = current_col;
+                let mut move_end_of_line = MoveEndOfLine {};
+                move_end_of_line.execute(editor)?;
 
-            let current_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
-            let num_of_chars_of_current_line = current_line.chars().count();
-            let destination_col = if current_cursor_col_in_buffer > num_of_chars_of_current_line {
-                num_of_chars_of_current_line
-            } else {
-                current_cursor_col_in_buffer
-            };
-            editor.cursor_position_in_buffer.col = 0;
-            editor.cursor_position_on_screen.col = 0;
-            editor.window_position_in_buffer.col = 0;
-            let mut forward_char = ForwardChar {};
-            for _ in 0..destination_col {
-                forward_char.execute(editor)?;
+                editor.cursor_position_in_buffer.row = next_row;
+                if editor.cursor_position_on_screen.row < editor.max_content_row_index() {
+                    editor.cursor_position_on_screen.row += 1;
+                } else {
+                    editor.window_position_in_buffer.row += 1;
+                }
+
+                let current_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
+                let num_of_chars_of_current_line = current_line.chars().count();
+                let destination_col = if current_cursor_col_in_buffer > num_of_chars_of_current_line {
+                    num_of_chars_of_current_line
+                } else {
+                    current_cursor_col_in_buffer
+                };
+                editor.cursor_position_in_buffer.col = 0;
+                editor.cursor_position_on_screen.col = 0;
+                editor.window_position_in_buffer.col = 0;
+                let mut forward_char = ForwardChar {};
+                for _ in 0..destination_col {
+                    forward_char.execute(editor)?;
+                }
             }
         }
         Ok(())
@@ -177,8 +193,18 @@ impl Command for NextLine {
 pub struct PreviousLine;
 impl Command for PreviousLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
-        if editor.cursor_position_in_buffer.row > 0 {
-            let current_cursor_col_in_buffer = editor.cursor_position_in_buffer.col;
+        let width = editor.terminal_size.width as usize;
+        let current_row = editor.cursor_position_in_buffer.row;
+        let current_col = editor.cursor_position_in_buffer.col;
+
+        if current_col / width > 0 {
+            let dest_col = current_col.saturating_sub(width);
+            let mut b = BackwardChar {};
+            for _ in 0..(current_col - dest_col) {
+                b.execute(editor)?;
+            }
+        } else if current_row > 0 {
+            let current_cursor_col_in_buffer = current_col;
             if current_cursor_col_in_buffer > 0 {
                 let mut move_beginning_of_line = MoveBeginningOfLine {};
                 move_beginning_of_line.execute(editor)?;
@@ -356,8 +382,8 @@ mod tests {
         assert_eq!(editor.window_position_in_buffer.row, 0);
 
         next_line.execute(&mut editor).unwrap();
-        assert_eq!(editor.cursor_position_in_buffer.row, 2);
-        assert_eq!(editor.cursor_position_on_screen.row, 3);
+        assert_eq!(editor.cursor_position_in_buffer.row, 1);
+        assert_eq!(editor.cursor_position_on_screen.row, 2);
         assert_eq!(editor.window_position_in_buffer.row, 0);
 
         let mut previous_line = PreviousLine {};

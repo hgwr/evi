@@ -719,7 +719,7 @@ impl Editor {
         self.window_position_in_buffer.row = 0;
         self.window_position_in_buffer.col = 0;
         let mut next_line = crate::command::commands::move_cursor::NextLine {};
-        for _ in 0..row {
+        while self.cursor_position_in_buffer.row < row {
             next_line.execute(self)?;
         }
         let mut forward_char = crate::command::commands::move_cursor::ForwardChar {};

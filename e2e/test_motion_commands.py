@@ -32,8 +32,13 @@ def get_screen_and_cursor(child: pexpect.spawn, rows: int = 24) -> Tuple[str, Tu
     child.send("\x07")
     child.expect(r"line (\d+) of \d+ --\d+%-- col (\d+)")
     screen = child.before + child.after
+    # Allow the timeout when reading screen updates to be configured via the
+    # ``EVI_PEXPECT_TIMEOUT`` environment variable. A slightly longer timeout is
+    # helpful in slower CI containers where ``read_nonblocking`` may otherwise
+    # raise ``pexpect.TIMEOUT`` while there is still output pending.
+    timeout = float(os.getenv("EVI_PEXPECT_TIMEOUT", "0.3"))
     try:
-        screen += child.read_nonblocking(size=4096, timeout=0.1)
+        screen += child.read_nonblocking(size=4096, timeout=timeout)
     except (pexpect.exceptions.TIMEOUT, pexpect.exceptions.EOF):
         pass
     matches = list(re.finditer(r"\x1b\[(\d+);(\d+)H", screen))

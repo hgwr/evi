@@ -139,6 +139,7 @@ impl Command for NextLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let current_row = editor.cursor_position_in_buffer.row;
         let current_col = editor.cursor_position_in_buffer.col;
+        let start_screen_row = editor.cursor_position_on_screen.row;
 
         let next_row = current_row + 1;
         if next_row < editor.buffer.lines.len() {
@@ -147,10 +148,16 @@ impl Command for NextLine {
             move_end_of_line.execute(editor)?;
 
             editor.cursor_position_in_buffer.row = next_row;
-            if editor.cursor_position_on_screen.row < editor.max_content_row_index() {
-                editor.cursor_position_on_screen.row += 1;
+
+            let move_rows = editor.line_height(current_row) as u16;
+            let max_screen_row = editor.max_content_row_index();
+            let new_row = start_screen_row + move_rows;
+            if new_row <= max_screen_row {
+                editor.cursor_position_on_screen.row = new_row;
             } else {
-                editor.window_position_in_buffer.row += 1;
+                let overshoot = new_row - max_screen_row;
+                editor.cursor_position_on_screen.row = max_screen_row;
+                editor.window_position_in_buffer.row += overshoot as usize;
             }
 
             let current_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
@@ -190,14 +197,17 @@ impl Command for PreviousLine {
 
             editor.cursor_position_in_buffer.row -= 1;
 
-            let num_of_lines_on_screen = editor.line_height(editor.cursor_position_in_buffer.row);
-
-            if editor.cursor_position_on_screen.row >= num_of_lines_on_screen as u16 {
-                editor.cursor_position_on_screen.row -= num_of_lines_on_screen as u16;
-            } else if editor.window_position_in_buffer.row >= num_of_lines_on_screen {
-                editor.window_position_in_buffer.row -= num_of_lines_on_screen;
+            let move_rows = editor.line_height(editor.cursor_position_in_buffer.row) as u16;
+            if editor.cursor_position_on_screen.row >= move_rows {
+                editor.cursor_position_on_screen.row -= move_rows;
             } else {
-                editor.window_position_in_buffer.row = 0;
+                let overshoot = move_rows - editor.cursor_position_on_screen.row;
+                editor.cursor_position_on_screen.row = 0;
+                if editor.window_position_in_buffer.row >= overshoot as usize {
+                    editor.window_position_in_buffer.row -= overshoot as usize;
+                } else {
+                    editor.window_position_in_buffer.row = 0;
+                }
             }
 
             let current_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];

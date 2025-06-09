@@ -16,10 +16,11 @@ The tests automatically build the `evi` binary using Cargo before running.
 
 ## Running the tests
 
+The tests use the `pytest-xdist` plugin so they can be run in parallel.
 Execute all e2e tests with:
 
 ```bash
-pytest
+pytest -n auto
 ```
 
 Specific tests can be selected in the usual `pytest` ways, e.g.:
@@ -37,6 +38,14 @@ scripts/e2e_docker.sh
 ```
 
 This script builds the Docker image based on the official `rust` image, mounts the project directory into the container, and runs `cargo build --verbose` followed by `pytest e2e --verbose`. The Docker image installs the Python dependencies in a virtual environment to avoid system package conflicts.
+
+Because `scripts/e2e_docker.sh` forwards extra arguments to `pytest` via the
+`PYTEST_ARGS` environment variable, you can enable parallel execution. For
+example:
+
+```bash
+scripts/e2e_docker.sh -n auto e2e --verbose
+```
 
 ## Handling slow environments
 

@@ -45,7 +45,7 @@ To increase reliability, you can adjust the following environment variables:
 
 - `EVI_DELAY_BEFORE_SEND` – Delay (in seconds) before sending each keystroke to `evi` (default: 0.1s).
 - `EVI_DELAY_AFTER_ESC` – Delay (in seconds) after sending an Escape (ESC) key (default: 0.05s).
-- `EVI_PEXPECT_TIMEOUT` – Timeout (in seconds) for `pexpect` when waiting for `evi`'s output (default: 1s).
+- `EVI_PEXPECT_TIMEOUT` – Timeout (in seconds) for `pexpect` when waiting for `evi`'s output (default: 0.2s).
 
 Example command:
 

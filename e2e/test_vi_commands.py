@@ -16,6 +16,26 @@ def test_append_after_cursor_repeat():
     assert result.strip() == 'abbc'
 
 
+def test_insert_line_start():
+    result = run_commands(['I', 'X', '\x1b'], initial_content='abc\n')
+    assert result.strip() == 'Xabc'
+
+
+def test_insert_line_start_undo():
+    result = run_commands(['I', 'X', '\x1b', 'u'], initial_content='abc\n')
+    assert result.strip() == 'abc'
+
+
+def test_append_line_end():
+    result = run_commands(['A', 'X', '\x1b'], initial_content='abc\n')
+    assert result.strip() == 'abcX'
+
+
+def test_append_line_end_undo():
+    result = run_commands(['A', 'X', '\x1b', 'u'], initial_content='abc\n')
+    assert result.strip() == 'abc'
+
+
 def test_open_line_above():
     result = run_commands(['O', 'first', '\x1b'], initial_content='second\n')
     assert result.splitlines() == ['first', 'second']

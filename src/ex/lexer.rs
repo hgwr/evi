@@ -25,15 +25,16 @@ enum FileCommandState {
 }
 
 struct Lexer {
-    input: String,
+    input: Vec<char>,
     position: usize,
     current_char: Option<char>,
 }
 
 impl Lexer {
     fn new(input: String) -> Self {
+        let chars: Vec<char> = input.chars().collect();
         let mut lexer = Lexer {
-            input,
+            input: chars,
             position: 0,
             current_char: None,
         };
@@ -45,7 +46,7 @@ impl Lexer {
         if self.position >= self.input.len() {
             self.current_char = None;
         } else {
-            self.current_char = Some(self.input.chars().nth(self.position).unwrap());
+            self.current_char = Some(self.input[self.position]);
         }
         self.position += 1;
     }
@@ -55,15 +56,15 @@ impl Lexer {
         if self.position >= self.input.len() {
             None
         } else {
-            Some(self.input.chars().nth(self.position).unwrap())
+            Some(self.input[self.position])
         }
     }
 
     fn rewind_char(&mut self) {
         if self.position > 0 {
             self.position -= 1;
-            if self.position < self.input.chars().count() {
-                self.current_char = Some(self.input.chars().nth(self.position).unwrap());
+            if self.position < self.input.len() {
+                self.current_char = Some(self.input[self.position]);
             } else {
                 self.current_char = None;
             }
@@ -134,7 +135,9 @@ impl Lexer {
                 break;
             }
         }
-        let lexeme: String = self.input[start..self.position - 1].to_string();
+        let lexeme: String = self.input[start..self.position - 1]
+            .iter()
+            .collect();
         self.rewind_char();
         Token {
             token_type: TokenType::Command,
@@ -156,7 +159,9 @@ impl Lexer {
             }
             self.read_char();
         }
-        let lexeme: String = self.input[start..self.position - 1].to_string();
+        let lexeme: String = self.input[start..self.position - 1]
+            .iter()
+            .collect();
 
         Token {
             token_type: TokenType::AddressPattern,
@@ -635,6 +640,34 @@ mod tests {
         assert_eq!(tokens[2].lexeme, "foo");
         assert_eq!(tokens[3].token_type, TokenType::Command);
         assert_eq!(tokens[3].lexeme, "p");
+        assert_eq!(tokens[4].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_unicode_command() {
+        let input = ":é";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 3, "tokens: {:?}", tokens);
+        assert_eq!(tokens[0].token_type, TokenType::Colon);
+        assert_eq!(tokens[0].lexeme, ":");
+        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].lexeme, "é");
+        assert_eq!(tokens[2].token_type, TokenType::EndOfInput);
+    }
+
+    #[test]
+    fn test_tokenize_unicode_substitute() {
+        let input = "1s/é/ç/";
+        let tokens = tokenize(input);
+        assert_eq!(tokens.len(), 5, "tokens: {:?}", tokens);
+        assert_eq!(tokens[0].token_type, TokenType::Number);
+        assert_eq!(tokens[0].lexeme, "1");
+        assert_eq!(tokens[1].token_type, TokenType::Command);
+        assert_eq!(tokens[1].lexeme, "s");
+        assert_eq!(tokens[2].token_type, TokenType::Pattern);
+        assert_eq!(tokens[2].lexeme, "é");
+        assert_eq!(tokens[3].token_type, TokenType::Replacement);
+        assert_eq!(tokens[3].lexeme, "ç");
         assert_eq!(tokens[4].token_type, TokenType::EndOfInput);
     }
 }

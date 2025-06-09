@@ -577,7 +577,9 @@ impl Editor {
             PathBuf::from(".")
         };
         let file_name_os_str = path.file_name().unwrap_or_default();
-        let file_prefix = if partial.is_empty() || (partial == "." && file_name_os_str == std::ffi::OsStr::new(".")) {
+        let file_prefix = if partial.is_empty()
+            || (partial == "." && file_name_os_str == std::ffi::OsStr::new("."))
+        {
             ""
         } else {
             file_name_os_str.to_str().unwrap_or("")
@@ -589,7 +591,8 @@ impl Editor {
         };
         let mut matches: Vec<String> = entries
             .filter_map(|e| {
-                e.ok().and_then(|e| e.file_name().into_string().ok())
+                e.ok()
+                    .and_then(|e| e.file_name().into_string().ok())
                     .filter(|name| name.starts_with(file_prefix))
             })
             .collect();
@@ -612,7 +615,9 @@ impl Editor {
             completed_path,
             after_cursor
         );
-        let start_chars = self.ex_command_data[..start_byte + completed_path.len()].chars().count();
+        let start_chars = self.ex_command_data[..start_byte + completed_path.len()]
+            .chars()
+            .count();
         self.ex_command_cursor = start_chars;
         self.update_ex_command_status();
     }
@@ -707,7 +712,10 @@ impl Editor {
                 let lw = *self.registers_linewise.get(&ch).unwrap_or(&false);
                 (text, lw)
             }
-            None => (self.unnamed_register.clone(), self.unnamed_register_linewise),
+            None => (
+                self.unnamed_register.clone(),
+                self.unnamed_register_linewise,
+            ),
         }
     }
 
@@ -719,13 +727,25 @@ impl Editor {
         self.window_position_in_buffer.row = 0;
         self.window_position_in_buffer.col = 0;
         let mut next_line = crate::command::commands::move_cursor::NextLine {};
+        let mut prev_state = (
+            self.cursor_position_in_buffer.row,
+            self.cursor_position_in_buffer.col,
+            self.window_position_in_buffer.row,
+            self.cursor_position_on_screen.row,
+        );
         while self.cursor_position_in_buffer.row < row {
-            let prev_row = self.cursor_position_in_buffer.row;
             next_line.execute(self)?;
-            if self.cursor_position_in_buffer.row == prev_row {
-                // Handle the case where the cursor didn't move to avoid an infinite loop
+            let state = (
+                self.cursor_position_in_buffer.row,
+                self.cursor_position_in_buffer.col,
+                self.window_position_in_buffer.row,
+                self.cursor_position_on_screen.row,
+            );
+            if state == prev_state {
+                // Stop if no progress was made to avoid an infinite loop
                 break;
             }
+            prev_state = state;
         }
         let mut forward_char = crate::command::commands::move_cursor::ForwardChar {};
         for _ in 0..col {
@@ -1353,9 +1373,11 @@ impl Editor {
             SimpleLineAddressType::Pattern(p) => {
                 let re = Regex::new(&p.pattern).ok();
                 if let Some(re) = re {
-                    if let Some(idx) =
-                        self.search_line(&re, self.cursor_position_in_buffer.row, SearchDirection::Forward)
-                    {
+                    if let Some(idx) = self.search_line(
+                        &re,
+                        self.cursor_position_in_buffer.row,
+                        SearchDirection::Forward,
+                    ) {
                         idx as isize
                     } else {
                         self.buffer.lines.len().saturating_sub(1) as isize

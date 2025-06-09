@@ -261,7 +261,7 @@ impl Editor {
                     .downcast_ref::<OpenLine>()
                 {
                     let mut updated = open_line.clone();
-                    updated.editor_cursor_data = Some(self.snapshot_cursor_data());
+                    updated.editor_cursor_data = open_line.editor_cursor_data;
                     last_executed_command.command = Box::new(updated);
                 }
             }

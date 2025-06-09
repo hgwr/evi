@@ -28,3 +28,5 @@ pub mod substitute;
 pub mod undo;
 pub mod write;
 pub mod yank;
+pub mod read_file;
+pub mod reload;

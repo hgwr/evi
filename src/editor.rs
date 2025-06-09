@@ -570,10 +570,12 @@ impl Editor {
         } else {
             PathBuf::from(".")
         };
-        let file_prefix = path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("");
+        let file_name_os_str = path.file_name().unwrap_or_default();
+        let file_prefix = if partial.is_empty() || (partial == "." && file_name_os_str == std::ffi::OsStr::new(".")) {
+            ""
+        } else {
+            file_name_os_str.to_str().unwrap_or("")
+        };
 
         let entries = match fs::read_dir(&dir) {
             Ok(e) => e,

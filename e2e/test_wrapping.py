@@ -60,6 +60,8 @@ def test_cursor_j_k_on_wrapped_line():
         # Ensure the editor has finished drawing
         get_screen_and_cursor(child)
         goto(child, 1, 1)
+        # Wait for the cursor to settle before sending movement commands
+        get_screen_and_cursor(child)
 
         child.send("j")
         _, pos = get_screen_and_cursor(child)

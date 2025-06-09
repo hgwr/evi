@@ -247,11 +247,24 @@ impl Editor {
     }
 
     fn convert_repetitive_command_history_to_commands_history(&mut self) {
+        use crate::command::commands::open_line::OpenLine;
+
         if let Some(mut last_command_chunk) = self.command_history.pop() {
             let mut last_executed_command = last_command_chunk.pop().unwrap();
             last_executed_command
                 .command
                 .set_text(self.last_input_string.clone());
+
+            if last_executed_command.command.is::<OpenLine>() {
+                if let Some(open_line) = last_executed_command
+                    .command
+                    .downcast_ref::<OpenLine>()
+                {
+                    let mut updated = open_line.clone();
+                    updated.editor_cursor_data = Some(self.snapshot_cursor_data());
+                    last_executed_command.command = Box::new(updated);
+                }
+            }
 
             let count = last_executed_command.command_data.count;
             if count == 1 {

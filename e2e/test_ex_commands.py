@@ -189,3 +189,14 @@ def test_global_print():
     content = 'foo\nbar\nfoo\n'
     result = run_commands([':g/foo/p\r'], initial_content=content, exit_cmd=':q!\r')
     assert result.splitlines() == ['foo', 'bar', 'foo']
+
+
+def test_print_dot_to_last():
+    result = run_commands([':.,$p\r'], initial_content='1\n2\n3\n', exit_cmd=':q!\r')
+    assert result.splitlines() == ['1', '2', '3']
+
+
+def test_delete_search_offset():
+    content = 'a\nfoo\nb\nc\n'
+    result = run_commands([':/foo/+1d\r'], initial_content=content)
+    assert result.splitlines() == ['a', 'foo', 'c']

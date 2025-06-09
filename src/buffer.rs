@@ -39,7 +39,10 @@ impl Buffer {
 
     pub fn from_file(file_path: &PathBuf) -> GenericResult<Buffer> {
         let content = std::fs::read_to_string(file_path)?;
-        let lines = content.lines().map(|s| s.to_string()).collect();
+        let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+        if lines.is_empty() {
+            lines.push(String::new());
+        }
         Ok(Buffer { lines })
     }
 
@@ -335,5 +338,13 @@ mod tests {
         drop(temp);
         let result = Buffer::from_file(&path);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_file_empty_file() {
+        let temp = NamedTempFile::new().unwrap();
+        let path = PathBuf::from(temp.path());
+        let buffer = Buffer::from_file(&path).unwrap();
+        assert_eq!(buffer.lines, vec!["".to_string()]);
     }
 }

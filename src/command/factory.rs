@@ -10,9 +10,11 @@ use super::commands::delete::{Delete, DeleteChar};
 use super::commands::find_char::{FindChar, RepeatFindChar};
 use super::commands::go_to_file::{GoToFirstLine, GoToLastLine};
 use super::commands::insert::Insert;
+use super::commands::insert_line_start::InsertLineStart;
 use super::commands::misc::DisplayFile;
 use super::commands::open_line::OpenLine;
 use super::commands::paste::Paste;
+use super::commands::append_line_end::AppendLineEnd;
 use super::commands::search::RepeatSearch;
 use super::commands::undo::Undo;
 use super::commands::yank::Yank;
@@ -160,12 +162,20 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('i'),
             ..
         } => Box::new(Insert::default()),
+        CommandData {
+            key_code: KeyCode::Char('I'),
+            ..
+        } => Box::new(InsertLineStart::default()),
 
         // append commands
         CommandData {
             key_code: KeyCode::Char('a'),
             ..
         } => Box::new(Append::default()),
+        CommandData {
+            key_code: KeyCode::Char('A'),
+            ..
+        } => Box::new(AppendLineEnd::default()),
 
         // open line commands
         CommandData {

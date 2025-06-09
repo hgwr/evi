@@ -318,6 +318,20 @@ impl Editor {
         }
     }
 
+    pub fn set_insert_mode_beginning_of_line(&mut self) -> GenericResult<()> {
+        let mut move_bol = crate::command::commands::move_cursor::MoveBeginningOfLine {};
+        move_bol.execute(self)?;
+        self.set_insert_mode();
+        Ok(())
+    }
+
+    pub fn set_insert_mode_end_of_line(&mut self) -> GenericResult<()> {
+        let mut move_eol = crate::command::commands::move_cursor::MoveEndOfLine {};
+        move_eol.execute(self)?;
+        self.set_insert_mode();
+        Ok(())
+    }
+
     pub fn set_replace_mode(&mut self) {
         match self.mode {
             Mode::Command | Mode::ReplaceChar => {

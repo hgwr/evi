@@ -383,7 +383,7 @@ impl Parser {
         let base = if self.accept_type(TokenType::Number) {
             if let MyOption::Some(token) = self.pop() {
                 let number = token.lexeme.clone();
-                Some(SimpleLineAddressType::LineNumber(number.parse().unwrap()))
+Some(SimpleLineAddressType::LineNumber(number.parse().map_err(|e| GenericError::from(format!("Invalid line number '{}': {}", number, e)))?))
             } else {
                 None
             }

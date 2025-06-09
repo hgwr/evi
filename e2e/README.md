@@ -37,3 +37,20 @@ scripts/e2e_docker.sh
 ```
 
 This script builds the Docker image based on the official `rust` image, mounts the project directory into the container, and runs `cargo build --verbose` followed by `pytest e2e --verbose`. The Docker image installs the Python dependencies in a virtual environment to avoid system package conflicts.
+
+## Handling slow environments
+
+When running in slower containers, `pexpect` may time out before `evi` responds.
+To increase reliability, you can adjust the following environment variables:
+
+- `EVI_DELAY_BEFORE_SEND` – Delay (in seconds) before sending each keystroke to `evi` (default: 0.1s).
+- `EVI_DELAY_AFTER_ESC` – Delay (in seconds) after sending an Escape (ESC) key (default: 0.05s).
+- `EVI_PEXPECT_TIMEOUT` – Timeout (in seconds) for `pexpect` when waiting for `evi`'s output (default: 1s).
+
+Example command:
+
+```bash
+EVI_PEXPECT_TIMEOUT=2 EVI_DELAY_BEFORE_SEND=0.2 pytest e2e --verbose
+```
+
+Higher values may be required when running inside the Codex workspace.

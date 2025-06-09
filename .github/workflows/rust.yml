@@ -33,4 +33,4 @@ jobs:
     - name: Install e2e test requirements
       run: pip install -r e2e/requirements.txt
     - name: Run e2e tests
-      run: pytest e2e --verbose
+      run: pytest -n auto e2e --verbose

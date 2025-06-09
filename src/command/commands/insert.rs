@@ -51,11 +51,16 @@ impl Command for Insert {
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if let Some(original_cursor_data) = self.editor_cursor_data {
             if let Some(text) = &self.text {
+                if text.is_empty() {
+                    editor.restore_cursor_data(original_cursor_data);
+                    return Ok(());
+                }
                 let row = original_cursor_data.cursor_position_in_buffer.row;
                 let col = original_cursor_data.cursor_position_in_buffer.col;
                 let input_text_lines: Vec<&str> = split_line(text);
-                if input_text_lines.len() == 0 {
-                    panic!("input_text_lines.len() == 0, text: '{:?}'", text);
+                if input_text_lines.is_empty() {
+                    editor.restore_cursor_data(original_cursor_data);
+                    return Ok(());
                 }
                 if input_text_lines.len() == 1 {
                     let line = &editor.buffer.lines[row];
@@ -93,6 +98,9 @@ impl Command for Insert {
         });
 
         if let Some(input_text) = &self.text {
+            if input_text.is_empty() {
+                return Ok(Some(new_insert));
+            }
             for c in input_text.chars() {
                 if c == '\n' {
                     editor.append_new_line()?
@@ -107,5 +115,27 @@ impl Command for Insert {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::editor::Editor;
+
+    #[test]
+    fn insert_empty_string() {
+        let mut editor = Editor::new();
+        editor.terminal_size = crate::editor::TerminalSize { width: 80, height: 24 };
+        editor.buffer.lines = vec!["hello".to_string()];
+        let mut cmd = Insert::default();
+        cmd.execute(&mut editor).unwrap();
+        editor.set_command_mode();
+        cmd.set_text(String::new());
+        let before = editor.buffer.lines.clone();
+        cmd.redo(&mut editor).unwrap();
+        assert_eq!(editor.buffer.lines, before);
+        cmd.undo(&mut editor).unwrap();
+        assert_eq!(editor.buffer.lines, before);
     }
 }

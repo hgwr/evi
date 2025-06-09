@@ -75,9 +75,12 @@ impl Buffer {
     }
 
     pub fn insert(&mut self, row: usize, col: usize, s: &str) -> GenericResult<()> {
+        if s.is_empty() {
+            return Ok(());
+        }
         let lines_to_be_inserted = split_line(s);
         if lines_to_be_inserted.len() == 0 {
-            panic!("lines.len() == 0, s: '{:?}'", s);
+            return Ok(());
         }
         if lines_to_be_inserted.len() == 1 {
             let new_line = self.lines[row]
@@ -304,6 +307,16 @@ mod tests {
         };
         buffer.insert(0, 1, "x\ny").unwrap();
         assert_eq!(buffer.lines, vec!["ax".to_string(), "ybc".to_string(), "def".to_string()]);
+    }
+
+    #[test]
+    fn test_insert_empty_string() {
+        let mut buffer = Buffer {
+            lines: vec!["abc".to_string()],
+        };
+        let original = buffer.lines.clone();
+        buffer.insert(0, 1, "").unwrap();
+        assert_eq!(buffer.lines, original);
     }
 
     #[test]

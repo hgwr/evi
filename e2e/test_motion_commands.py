@@ -144,15 +144,13 @@ def test_motion_l_at_eol():
 
 
 def test_motion_caret():
-    # TODO: '^' command is not yet implemented in evi
-    # run_motion_test(
-    #     file_content="  indented text\n",
-    #     terminal_size=(24, 80),
-    #     initial_cursor_pos=(1, 5),
-    #     command_to_test="^",
-    #     expected_cursor_pos=(1, 3),
-    # )
-    pass
+    run_motion_test(
+        file_content="  indented text\n",
+        terminal_size=(24, 80),
+        initial_cursor_pos=(1, 5),
+        command_to_test="^",
+        expected_cursor_pos=(1, 3),
+    )
 
 
 def test_motion_G():

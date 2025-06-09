@@ -5,21 +5,21 @@ use crate::command::commands::no_op_command::NoOpCommand;
 use crossterm::event::{KeyCode, KeyModifiers};
 
 use super::commands::append::Append;
+use super::commands::append_line_end::AppendLineEnd;
 use super::commands::change::Change;
 use super::commands::delete::{Delete, DeleteChar};
 use super::commands::find_char::{FindChar, RepeatFindChar};
 use super::commands::go_to_file::{GoToFirstLine, GoToLastLine};
 use super::commands::insert::Insert;
 use super::commands::insert_line_start::InsertLineStart;
+use super::commands::join_lines::JoinLines;
+use super::commands::mark::{JumpMark, SetMark};
 use super::commands::misc::DisplayFile;
 use super::commands::open_line::OpenLine;
-use super::commands::join_lines::JoinLines;
 use super::commands::paste::Paste;
-use super::commands::append_line_end::AppendLineEnd;
 use super::commands::search::RepeatSearch;
 use super::commands::undo::Undo;
 use super::commands::yank::Yank;
-use super::commands::mark::{SetMark, JumpMark};
 
 pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
     match command_data {
@@ -59,6 +59,10 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             key_code: KeyCode::Char('0'),
             ..
         } => Box::new(MoveBeginningOfLine {}),
+        CommandData {
+            key_code: KeyCode::Char('^'),
+            ..
+        } => Box::new(MoveFirstNonBlank {}),
         CommandData {
             key_code: KeyCode::Char('$'),
             ..

@@ -413,9 +413,10 @@ impl Parser {
 
     fn pattern(&mut self) -> Result<MyOption<Pattern>, GenericError> {
         if self.accept_type(TokenType::Pattern) {
-            if let MyOption::Some(token) = &self.token_opt {
-                let pattern = token.lexeme.clone();
-                return Ok(MyOption::Some(Pattern { pattern }));
+            if let MyOption::Some(token) = self.pop() {
+                return Ok(MyOption::Some(Pattern {
+                    pattern: token.lexeme,
+                }));
             }
         }
         Ok(MyOption::None)
@@ -754,6 +755,18 @@ mod tests {
     #[test]
     fn test_parse_global_delete() {
         let input = "g/foo/d";
+        let mut parser = Parser::new(input);
+        let command = parser.parse().unwrap();
+        assert!(command.is::<global::GlobalCommand>());
+        let g = command.downcast_ref::<global::GlobalCommand>().unwrap();
+        assert_eq!(g.pattern, "foo");
+        assert!(!g.invert);
+        assert!(g.command_tokens.is_some());
+    }
+
+    #[test]
+    fn test_parse_global_print() {
+        let input = "g/foo/p";
         let mut parser = Parser::new(input);
         let command = parser.parse().unwrap();
         assert!(command.is::<global::GlobalCommand>());

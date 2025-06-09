@@ -542,6 +542,75 @@ impl Editor {
         }
     }
 
+    pub fn complete_ex_command(&mut self) {
+        use std::fs;
+        use std::path::{Path, PathBuf};
+
+        let cursor_byte = Editor::char_to_byte_index(&self.ex_command_data, self.ex_command_cursor);
+        let before_cursor = &self.ex_command_data[..cursor_byte];
+        let start_byte = before_cursor
+            .rfind(|c: char| c.is_whitespace())
+            .map(|i| i + 1)
+            .unwrap_or(0);
+
+        let prefix = before_cursor[..start_byte].trim_start();
+        let command = prefix.split_whitespace().next().unwrap_or("");
+        if command != "w" && command != "r" && command != "o" {
+            return;
+        }
+
+        let partial = &before_cursor[start_byte..];
+        let path = Path::new(partial);
+        let dir = if let Some(parent) = path.parent() {
+            if parent.as_os_str().is_empty() {
+                PathBuf::from(".")
+            } else {
+                parent.to_path_buf()
+            }
+        } else {
+            PathBuf::from(".")
+        };
+        let file_name_os_str = path.file_name().unwrap_or_default();
+        let file_prefix = if partial.is_empty() || (partial == "." && file_name_os_str == std::ffi::OsStr::new(".")) {
+            ""
+        } else {
+            file_name_os_str.to_str().unwrap_or("")
+        };
+
+        let entries = match fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+        let mut matches: Vec<String> = entries
+            .filter_map(|e| {
+                e.ok().and_then(|e| e.file_name().into_string().ok())
+                    .filter(|name| name.starts_with(file_prefix))
+            })
+            .collect();
+
+        matches.sort();
+        let candidate = match matches.first() {
+            Some(c) => c,
+            None => return,
+        };
+
+        let mut completed_path = dir.join(candidate).to_string_lossy().to_string();
+        if Path::new(&completed_path).is_dir() {
+            completed_path.push('/');
+        }
+
+        let after_cursor = &self.ex_command_data[cursor_byte..];
+        self.ex_command_data = format!(
+            "{}{}{}",
+            &self.ex_command_data[..start_byte],
+            completed_path,
+            after_cursor
+        );
+        let start_chars = self.ex_command_data[..start_byte + completed_path.len()].chars().count();
+        self.ex_command_cursor = start_chars;
+        self.update_ex_command_status();
+    }
+
     pub fn previous_ex_command(&mut self) {
         if self.ex_command_history.is_empty() {
             return;

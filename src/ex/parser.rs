@@ -438,7 +438,7 @@ Some(SimpleLineAddressType::LineNumber(number.parse().map_err(|e| GenericError::
             None
         };
 
-        if let Some(mut addr) = base {
+        if let Some(addr) = base {
             let mut offset: isize = 0;
             loop {
                 if self.accept(TokenType::Symbol, "+") {

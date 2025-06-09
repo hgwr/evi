@@ -88,7 +88,7 @@ mod tests {
     fn read_file_inserts_lines() {
         let base = NamedTempFile::new().unwrap();
         write(base.path(), "one\n").unwrap();
-        let mut extra = NamedTempFile::new().unwrap();
+        let extra = NamedTempFile::new().unwrap();
         write(extra.path(), "a\nb\n").unwrap();
 
         let mut editor = Editor::new();

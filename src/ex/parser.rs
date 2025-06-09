@@ -430,7 +430,7 @@ tok.lexeme.parse::<isize>().map_err(|e| GenericError::from(format!("Invalid offs
                     self.pop();
                     let value = if self.accept_type(TokenType::Number) {
                         if let MyOption::Some(tok) = self.pop() {
-                            tok.lexeme.parse::<isize>().unwrap_or(1)
+tok.lexeme.parse::<isize>().map_err(|e| GenericError::from(format!("Invalid offset number '{}': {}", tok.lexeme, e)))?
                         } else {
                             1
                         }

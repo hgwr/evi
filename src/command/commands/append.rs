@@ -39,22 +39,22 @@ impl Command for Append {
         if editor.is_insert_mode() {
             // do nothing
         } else {
-            if let Some(c) = editor.get_current_char() {
-                editor.cursor_position_in_buffer.col += 1;
-                editor.cursor_position_on_screen.col += get_char_width(c);
-                if editor.cursor_position_on_screen.col >= editor.terminal_size.width {
-                    editor.cursor_position_on_screen.col = 0;
-                    if editor.cursor_position_on_screen.row < editor.max_content_row_index() {
-                        editor.cursor_position_on_screen.row += 1;
-                    } else {
-                        editor.window_position_in_buffer.row += 1;
-                    }
+            let width = editor
+                .get_current_char()
+                .map(get_char_width)
+                .unwrap_or(0);
+            editor.cursor_position_in_buffer.col += 1;
+            editor.cursor_position_on_screen.col += width;
+            if editor.cursor_position_on_screen.col >= editor.terminal_size.width {
+                editor.cursor_position_on_screen.col = 0;
+                if editor.cursor_position_on_screen.row < editor.max_content_row_index() {
+                    editor.cursor_position_on_screen.row += 1;
+                } else {
+                    editor.window_position_in_buffer.row += 1;
                 }
-                self.editor_cursor_data = Some(editor.snapshot_cursor_data());
-                editor.set_insert_mode();
-            } else {
-                return Err("Failed to get current char".into());
             }
+            self.editor_cursor_data = Some(editor.snapshot_cursor_data());
+            editor.set_insert_mode();
         }
         Ok(())
     }

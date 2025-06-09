@@ -1526,4 +1526,27 @@ mod tests {
         editor.open_file(&path);
         assert!(editor.status_line.starts_with("Failed to open file"));
     }
+
+    #[test]
+    fn test_append_at_end_of_line() {
+        use crate::command::base::CommandData;
+        use crossterm::event::KeyCode;
+
+        let mut editor = Editor::new();
+        editor.resize_terminal(80, 24);
+        editor.buffer.lines = vec!["abc".to_string()];
+        editor.move_cursor_to(0, 2).unwrap();
+
+        let cmd = CommandData {
+            count: 1,
+            key_code: KeyCode::Char('a'),
+            modifiers: crossterm::event::KeyModifiers::NONE,
+            range: None,
+        };
+        editor.execute_command(cmd).unwrap();
+
+        assert!(editor.is_insert_mode());
+        assert_eq!(editor.cursor_position_in_buffer.col, 3);
+        assert_eq!(editor.cursor_position_on_screen.col, 3);
+    }
 }

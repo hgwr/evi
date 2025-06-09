@@ -6,7 +6,7 @@ use crossterm::{
 use std::io::stdout;
 use std::io::Write;
 
-use log::{error, info};
+use log::error;
 
 use crate::command::compose::{compose, InputState, KeyData};
 use crate::editor::Editor;
@@ -28,7 +28,6 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
         match result {
             Ok(Event::Key(key_event)) => {
                 if editor.is_command_mode() {
-                    info!("Key event: {:?}", key_event);
                     if awaiting_register {
                         if let event::KeyCode::Char(c) = key_event.code {
                             editor.pending_register = Some(c);
@@ -55,7 +54,6 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                         let input_state = compose(&event_keys);
                         match input_state {
                             InputState::CommandCompleted(command_data) => {
-                                info!("Command completed: {:?}", command_data);
                                 editor.execute_command(command_data)?;
                                 event_keys.clear();
                             }
@@ -65,9 +63,7 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                                 editor.display_visual_bell()?;
                                 event_keys.clear();
                             }
-                            _ => {
-                                info!("Input state: {:?}", input_state);
-                            }
+                            _ => {}
                         }
                     }
                 } else if editor.is_ex_command_mode() {
@@ -293,7 +289,7 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                 editor.resize_terminal(width, height);
             }
             _ => {
-                info!("Other event: {:?}", result)
+                // ignore other events
             }
         }
         if editor.should_exit {

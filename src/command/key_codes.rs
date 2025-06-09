@@ -25,7 +25,7 @@ pub fn is_editing_command_without_range(key: &KeyCode) -> bool {
         Char('x') | Char('X') | Char('r') | Char('R') => true,
         // '.' repeats the last command which may originate from any category,
         // but it is parsed as a standalone editing command without a range.
-        Char('D') | Char('p') | Char('P') | Char('~') | Char('.') => true,
+        Char('D') | Char('p') | Char('P') | Char('~') | Char('.') | Char('J') => true,
         Char('u') => true,
         _ => false,
     }

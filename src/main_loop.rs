@@ -85,6 +85,12 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                             editor.backspace_ex_command();
                         }
                         KeyData {
+                            key_code: event::KeyCode::Tab,
+                            ..
+                        } => {
+                            editor.complete_ex_command();
+                        }
+                        KeyData {
                             key_code: event::KeyCode::Left,
                             ..
                         } => {

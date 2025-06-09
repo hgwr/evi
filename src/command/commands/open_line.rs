@@ -87,8 +87,9 @@ impl Command for OpenLine {
 
     fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
         editor.is_dirty = true;
+        let cursor_before = editor.snapshot_cursor_data();
         let new_open = Box::new(OpenLine {
-            editor_cursor_data: self.editor_cursor_data,
+            editor_cursor_data: Some(cursor_before),
             text: self.text.clone(),
             above: self.above,
         });

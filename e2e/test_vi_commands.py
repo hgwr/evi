@@ -58,8 +58,7 @@ def test_join_lines_undo():
 
 def test_open_line_above_repeat():
     result = run_commands(['O', 'first', '\x1b', '.', '\x1b'], initial_content='second\n')
-    # TODO: repeating open line should insert another line but is not implemented yet
-    assert result.splitlines() == ['second']
+    assert result.splitlines() == ['first', 'first', 'second']
 
 
 def test_delete_char():

@@ -720,7 +720,12 @@ impl Editor {
         self.window_position_in_buffer.col = 0;
         let mut next_line = crate::command::commands::move_cursor::NextLine {};
         while self.cursor_position_in_buffer.row < row {
+            let prev_row = self.cursor_position_in_buffer.row;
             next_line.execute(self)?;
+            if self.cursor_position_in_buffer.row == prev_row {
+                // Handle the case where the cursor didn't move to avoid an infinite loop
+                break;
+            }
         }
         let mut forward_char = crate::command::commands::move_cursor::ForwardChar {};
         for _ in 0..col {

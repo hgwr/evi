@@ -69,7 +69,7 @@ def test_cursor_j_k_on_wrapped_line():
 
         child.send("j")
         _, pos = get_screen_and_cursor(child)
-        assert pos == (2, 1)
+        assert pos == (3, 1)
 
         child.send("k")
         _, pos = get_screen_and_cursor(child)

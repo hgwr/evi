@@ -15,6 +15,7 @@ pub mod move_cursor;
 pub mod move_lines;
 pub mod no_op_command;
 pub mod open_line;
+pub mod join_lines;
 pub mod paste;
 pub mod append_line_end;
 pub mod print;

@@ -13,6 +13,7 @@ use super::commands::insert::Insert;
 use super::commands::insert_line_start::InsertLineStart;
 use super::commands::misc::DisplayFile;
 use super::commands::open_line::OpenLine;
+use super::commands::join_lines::JoinLines;
 use super::commands::paste::Paste;
 use super::commands::append_line_end::AppendLineEnd;
 use super::commands::search::RepeatSearch;
@@ -189,6 +190,12 @@ pub fn command_factory(command_data: &CommandData) -> Box<dyn Command> {
             above: true,
             ..Default::default()
         }),
+
+        // join lines command
+        CommandData {
+            key_code: KeyCode::Char('J'),
+            ..
+        } => Box::new(JoinLines::default()),
 
         // delete commands
         CommandData {

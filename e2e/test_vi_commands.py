@@ -46,6 +46,16 @@ def test_open_line_above_undo():
     assert result.strip() == 'second'
 
 
+def test_join_lines():
+    result = run_commands(['J'], initial_content='a\nb\n')
+    assert result.splitlines() == ['ab']
+
+
+def test_join_lines_undo():
+    result = run_commands(['J', 'u'], initial_content='a\nb\n')
+    assert result.splitlines() == ['a', 'b']
+
+
 def test_open_line_above_repeat():
     result = run_commands(['O', 'first', '\x1b', '.', '\x1b'], initial_content='second\n')
     # TODO: repeating open line should insert another line but is not implemented yet

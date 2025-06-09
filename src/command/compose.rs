@@ -1,7 +1,5 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use log::info;
-
 use crate::command::base::{CommandData, JumpCommandData};
 use crate::command::key_codes::{
     is_ctrl_command, is_editing_command_with_range, is_editing_command_without_range,
@@ -46,8 +44,6 @@ pub enum InputState {
 
 // Take vi command input, interpret it, and generate commands
 pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
-    info!("compose: {:?}", key_events);
-
     let mut input_state = InputState::Start;
 
     for event in key_events {
@@ -62,7 +58,6 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 modifiers: KeyModifiers::CONTROL,
                 ..
             } => {
-                info!("Esc");
                 return InputState::CommandCompleted(CommandData {
                     count: 1,
                     key_code: KeyCode::Esc,
@@ -394,7 +389,6 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 modifiers: KeyModifiers::NONE,
                 ..
             } => {
-                info!("Enter");
                 return InputState::CommandCompleted(CommandData {
                     count: 1,
                     key_code: KeyCode::Enter,
@@ -403,7 +397,7 @@ pub fn compose(key_events: &Vec<KeyEvent>) -> InputState {
                 });
             }
             _ => {
-                info!("Other key: {:?}", event);
+                // unhandled key
                 ()
             }
         }

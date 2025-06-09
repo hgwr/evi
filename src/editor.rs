@@ -7,8 +7,6 @@ use crossterm::{
     ExecutableCommand,
 };
 
-use log::info;
-
 use crate::render::render;
 use crate::{
     buffer::Buffer,
@@ -201,7 +199,6 @@ impl Editor {
     }
 
     pub fn resize_terminal(&mut self, width: u16, height: u16) {
-        info!("Resize terminal to width: {}, height: {}", width, height);
         self.terminal_size = TerminalSize { width, height };
         if self.cursor_position_on_screen.col >= width {
             self.cursor_position_on_screen.col = width - 1;
@@ -256,10 +253,7 @@ impl Editor {
                 .set_text(self.last_input_string.clone());
 
             if last_executed_command.command.is::<OpenLine>() {
-                if let Some(open_line) = last_executed_command
-                    .command
-                    .downcast_ref::<OpenLine>()
-                {
+                if let Some(open_line) = last_executed_command.command.downcast_ref::<OpenLine>() {
                     let mut updated = open_line.clone();
                     updated.editor_cursor_data = open_line.editor_cursor_data;
                     last_executed_command.command = Box::new(updated);
@@ -282,7 +276,6 @@ impl Editor {
             } else {
                 panic!("count: {}", count);
             }
-            info!("input string: {}", self.last_input_string);
         }
     }
 
@@ -300,7 +293,6 @@ impl Editor {
                     command_data: command_data.clone(),
                     command,
                 });
-                info!("command_series.len(): {}", command_series.len());
                 if let Ok(Some(next_command)) = redo_result {
                     command_opt = Some(next_command);
                 } else {
@@ -314,9 +306,7 @@ impl Editor {
                 command_data: command_data.clone(),
                 command,
             });
-            info!("command_series.len(): {}", command_series.len());
         }
-        info!("### command_series.len(): {}", command_series.len());
         self.last_command = Some(command_series.clone());
         self.command_history.push(command_series);
     }
@@ -500,7 +490,6 @@ impl Editor {
         let mut parser = Parser::new(ex_command_str);
         let result = parser.parse();
         if let Err(e) = result {
-            info!("Error: {}", e.to_string());
             self.status_line = e.to_string();
             self.ex_command_data = "".to_string();
             return Ok(());
@@ -1422,7 +1411,6 @@ impl Editor {
 
 impl Drop for Editor {
     fn drop(&mut self) {
-        info!("Drop Editor");
         let mut stdout = std::io::stdout();
         terminal::disable_raw_mode().unwrap();
         stdout.execute(terminal::Clear(ClearType::All)).unwrap();

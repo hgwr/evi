@@ -1,7 +1,5 @@
 use std::any::Any;
 
-use log::info;
-
 use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
@@ -59,8 +57,6 @@ impl Command for Insert {
                 if input_text_lines.len() == 0 {
                     panic!("input_text_lines.len() == 0, text: '{:?}'", text);
                 }
-                info!("input_text_lines: {:?}", input_text_lines);
-                info!("input_text_lines.len(): {:?}", input_text_lines.len());
                 if input_text_lines.len() == 1 {
                     let line = &editor.buffer.lines[row];
                     let new_line: String = line
@@ -74,8 +70,10 @@ impl Command for Insert {
                     let first_line = editor.buffer.lines[row].clone();
                     let last_line = editor.buffer.lines[row + input_text_lines.len() - 1].clone();
                     let new_first_line: String = first_line.chars().take(col).collect();
-                    let new_last_line: String =
-                        last_line.chars().skip(last_input_line.chars().count()).collect();
+                    let new_last_line: String = last_line
+                        .chars()
+                        .skip(last_input_line.chars().count())
+                        .collect();
                     editor.buffer.lines[row] = new_first_line + new_last_line.as_str();
                     for _ in 0..input_text_lines.len() - 1 {
                         editor.buffer.lines.remove(row + 1);

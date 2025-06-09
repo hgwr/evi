@@ -1,4 +1,3 @@
-use log::info;
 use std::any::Any;
 
 use crate::command::base::Command;
@@ -72,8 +71,6 @@ impl Command for Append {
                 if input_text_lines.len() == 0 {
                     panic!("input_text_lines.len() == 0, text: '{:?}'", text);
                 }
-                info!("input_text_lines: {:?}", input_text_lines);
-                info!("input_text_lines.len(): {:?}", input_text_lines.len());
                 if input_text_lines.len() == 1 {
                     let line = &editor.buffer.lines[row];
                     let new_line: String = line

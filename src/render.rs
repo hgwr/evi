@@ -1,7 +1,6 @@
 use std::io::Write;
 
 use crossterm::{cursor, style, terminal, QueueableCommand};
-use log::info;
 
 use crate::{
     editor::{Editor, TerminalSize},
@@ -10,7 +9,6 @@ use crate::{
 };
 
 pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResult<()> {
-    info!("render");
     let mut stdout = stdout.lock();
     stdout.queue(terminal::Clear(terminal::ClearType::All))?;
     stdout.queue(cursor::MoveTo(0, 0))?;

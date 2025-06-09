@@ -14,8 +14,6 @@ pub struct PrintCommand {
 
 impl Command for PrintCommand {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
-        log::info!("PrintCommand execute");
-
         if editor.buffer.lines.is_empty() {
             return Ok(());
         }

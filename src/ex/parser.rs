@@ -18,7 +18,6 @@ use crate::generic_error::GenericError;
 
 use crate::command::commands::exit;
 use crate::command::commands::print;
-use log::debug;
 use crate::command::commands::write;
 use crate::command::commands::reload::ReloadFileCommand;
 use crate::command::commands::read_file;
@@ -61,7 +60,6 @@ pub struct Parser {
 impl Parser {
     pub fn new(input: &str) -> Self {
         let tokens = lexer::tokenize(input);
-        debug!("tokens {:?}", tokens);
         Parser {
             original_tokens: tokens.clone(),
             tokens,

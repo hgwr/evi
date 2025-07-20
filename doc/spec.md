@@ -4,9 +4,9 @@ evi is a vi clone editor written in Rust. It is a simple and lightweight text ed
 
 ## Features
 
-- [ ] Basic vi commands
-- [ ] Ex commands
-- [ ] Search and replace
+- [x] Basic vi commands
+- [x] Ex commands
+- [x] Search and replace
 - [ ] Unicode support
 - [ ] Syntax highlighting
 
@@ -36,9 +36,50 @@ evi is a vi clone editor written in Rust. It is a simple and lightweight text ed
 
 ## vi commands
 
-TBD
+The following vi commands are currently implemented:
+
+- `h`, `j`, `k`, `l` — move the cursor left, down, up and right
+- `0`, `$` — jump to the beginning or end of the current line
+- `w`, `b` — move forward or backward by word
+- `i`, `a` — insert before or append after the cursor
+- `o`, `O` — open a new line below or above the current line
+- `c{motion}` — change text specified by a motion
+- `d{motion}` — delete text specified by a motion
+- `y{motion}` — yank text into the unnamed register
+- `p`, `P` — paste text from the unnamed register
+- `r`, `R` — replace a character or enter replace mode
+- `/`, `?`, `n`, `N` — search forward or backward and repeat the search
+- `f`, `F`, `t`, `T`, `;` — find character on the current line
+- `x` — delete the character under the cursor
+- `u` — undo the last change
+- `Ctrl-g` — display file information
+- `ZZ` — write the file if modified and exit
+- `:` — enter ex command mode
+
+### vim compatibility
+
+evi aims to eventually implement the full set of commands available in vim. The current focus is on a small core that can be
+tested end to end.  The following subset of standard commands is used as the
+target for the E2E tests described in this repository:
+
+- Cursor motion commands: `h`, `j`, `k`, `l`, `0`, `$`, `w`, `b`.
+- Insert and append commands: `i`, `a`, `o`, `O`, `I`, `A`.
+- Deletion: `x`, `dd`, `dw`.
+- Searching: `/pattern`, `?pattern`, `n`, `N`.
+- Undo and redo: `u`, `Ctrl-r`.
+- File information: `Ctrl-g`, and `ZZ` to write and exit.
+
+Additional commands such as marks, macros and visual mode are not yet
+implemented.
 
 ## ex commands
+
+The following ex commands are implemented:
+
+- `:q`, `:q!`
+- `:w`, `:w!`
+- `:x`, `:wq`
+- `:g`, `:g!`
 
 ### Exit and write, read
 

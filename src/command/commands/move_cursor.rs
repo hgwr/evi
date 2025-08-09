@@ -103,6 +103,7 @@ impl Command for NextLine {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         let next_row = editor.cursor_position_in_buffer.row + 1;
         if next_row < editor.buffer.lines.len() {
+            // 通常の場合：次の行に移動
             let current_cursor_col_in_buffer = editor.cursor_position_in_buffer.col;
             let mut move_end_of_line = MoveEndOfLine {};
             move_end_of_line.execute(editor)?;
@@ -127,6 +128,27 @@ impl Command for NextLine {
             let mut forward_char = ForwardChar {};
             for _ in 0..destination_col {
                 forward_char.execute(editor)?;
+            }
+        } else {
+            // ファイルの最後の行にいる場合：カーソルは移動せずにスクロールのみ試行
+            // 画面の最下行（コンテンツ領域の最後）にカーソルがあり、かつ
+            // まだスクロール可能な場合（バッファの表示開始位置を下げられる場合）
+            if editor.cursor_position_on_screen.row >= editor.content_height() - 1 {
+                // スクロール可能かチェック：現在のウィンドウ位置 + コンテンツ高さが
+                // バッファの総行数より小さい場合
+                let max_window_start = if editor.buffer.lines.len() > editor.content_height() as usize {
+                    editor.buffer.lines.len() - editor.content_height() as usize
+                } else {
+                    0
+                };
+                
+                if editor.window_position_in_buffer.row < max_window_start {
+                    editor.window_position_in_buffer.row += 1;
+                    // カーソルの画面上の位置を調整（最下行に保持）
+                    if editor.cursor_position_on_screen.row > 0 {
+                        editor.cursor_position_on_screen.row -= 1;
+                    }
+                }
             }
         }
         Ok(())

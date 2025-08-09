@@ -58,9 +58,15 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
         stdout.queue(style::Print(" "))?;
     }
 
+    // カーソル位置をコンテンツ領域内に制限（ステータス行を超えないように）
+    let cursor_row = std::cmp::min(
+        editor.cursor_position_on_screen.row as u16,
+        editor.content_height() - 1,
+    );
+    
     stdout.queue(cursor::MoveTo(
         editor.cursor_position_on_screen.col as u16,
-        editor.cursor_position_on_screen.row as u16,
+        cursor_row,
     ))?;
     stdout.flush()?;
 

@@ -2,6 +2,7 @@ import os
 import re
 import pexpect
 import tempfile
+import time
 from typing import Tuple
 
 from .conftest import EVI_BIN
@@ -68,23 +69,21 @@ def run_motion_test(
 
         env = os.environ.copy()
         env.setdefault("TERM", "xterm")
-
         child = pexpect.spawn(EVI_BIN, [path], env=env, encoding="utf-8")
-        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
+        child.delaybeforesend = 0.0
         child.setwinsize(*terminal_size)
 
-        # Ensure the editor has finished drawing before running commands
         get_screen_and_cursor(child)
-
-        # Move to the requested starting position
         goto(child, initial_cursor_pos[0], initial_cursor_pos[1])
-        # Wait for the cursor to settle in slower environments
         get_screen_and_cursor(child)
 
-        # Send the command to test
         child.send(command_to_test)
+        deadline = time.time() + 0.4
         screen, pos = get_screen_and_cursor(child)
-        assert pos == expected_cursor_pos
+        while pos != expected_cursor_pos and time.time() < deadline:
+            time.sleep(0.02)
+            screen, pos = get_screen_and_cursor(child)
+        assert pos == expected_cursor_pos, f"Cursor {pos} != expected {expected_cursor_pos}"
         assert file_content.splitlines()[0] in screen
 
         child.send(":q!\r")
@@ -153,15 +152,11 @@ def test_motion_j_scrolls_at_bottom():
 
         env = os.environ.copy()
         env.setdefault("TERM", "xterm")
-
         child = pexpect.spawn(EVI_BIN, [path], env=env, encoding="utf-8")
-        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
+        child.delaybeforesend = 0.0
         child.setwinsize(6, 80)
 
-        # Ensure the editor has finished drawing
         get_screen_and_cursor(child)
-
-        # Move cursor to the bottom line and attempt to move down once more
         child.send("jjjj")
         get_screen_and_cursor(child)
         child.send("j")

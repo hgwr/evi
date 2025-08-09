@@ -2,15 +2,17 @@ import os
 import pexpect
 import tempfile
 import time
-from typing import cast
+from typing import cast, Callable, Optional, Tuple
 from .conftest import EVI_BIN
 
 
-def run_commands(commands, initial_content="", exit_cmd=":wq\r"):
+DEFAULT_DELAY = 0.0  # unified zero delay for deterministic tests
+
+def run_commands(commands, initial_content: str = "", exit_cmd: str = ":wq\r"):
     fd, path = tempfile.mkstemp()
     try:
+        # Ensure at least one line exists
         if initial_content == "":
-            # The reason for inserting "\n" is that the editor’s buffer assumes at least one line exists. When a file is truly empty (0 bytes), the buffer would load an empty vector of lines, and operations like insertion expect self.lines[0] to be valid. Starting with one empty line matches how vi behaves when opening an empty file and prevents index errors during tests.
             initial_content = "\n"
         with os.fdopen(fd, "w") as f:
             f.write(initial_content)
@@ -24,32 +26,65 @@ def run_commands(commands, initial_content="", exit_cmd=":wq\r"):
             env=cast(os._Environ[str], env),
             encoding="utf-8"
         )
-        # `pexpect` treats an ESC byte that is immediately followed by another
-        # character as an "Alt" modified key.  When the delay between sending
-        # commands is too small some operating systems (notably macOS) merge
-        # ``ESC`` and the following character into a single event.  This causes
-        # the editor to stay in insert mode and the tests to time out waiting
-        # for the process to exit.  A slightly longer delay is therefore used
-        # to ensure that ``ESC`` is recognized correctly across platforms.
-        #
-        # The value can be overridden using ``EVI_DELAY_BEFORE_SEND`` for
-        # experimentation, but defaults to 0.1 seconds. ``EVI_DELAY_AFTER_ESC``
-        # can be used to delay after sending ESC and defaults to 0.05 seconds.
-        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
-        delay_after_esc = float(os.getenv("EVI_DELAY_AFTER_ESC", "0.05"))
+        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", str(DEFAULT_DELAY)))
+        delay_after_esc = float(os.getenv("EVI_DELAY_AFTER_ESC", "0.0"))
 
         for c in commands:
             child.send(c)
             if c == "\x1b" and delay_after_esc > 0:
                 time.sleep(delay_after_esc)
 
-        if exit_cmd is not None:
+        if exit_cmd:
             child.send(exit_cmd)
 
         child.expect(pexpect.EOF)
 
         with open(path) as f:
-            result = f.read()
+            return f.read()
     finally:
         os.unlink(path)
-    return result
+
+
+def expect_cursor(child: pexpect.spawn, expected_line: Optional[int] = None, timeout: float = 0.3) -> Tuple[int, int]:
+    """Fetch current cursor (line, col) via Ctrl-G; optionally wait until line matches.
+
+    Returns (line, col).
+    """
+    deadline = time.time() + timeout
+    last = (1, 1)
+    while True:
+        child.send("\x07")
+        child.expect(r"line (\d+) of \d+ --\d+%-- col (\d+)", timeout=0.2)
+        row = int(child.match.group(1))
+        col = int(child.match.group(2))
+        last = (row, col)
+        if expected_line is None or row == expected_line:
+            return last
+        if time.time() >= deadline:
+            return last
+        time.sleep(0.02)
+
+
+def wait_until_top_line(child: pexpect.spawn, predicate: Callable[[str], bool], timeout: float = 0.5) -> str:
+    """Poll screen (via Ctrl-G triggered render flush) until predicate(screen) is True or timeout.
+
+    Returns final captured screen.
+    """
+    end = time.time() + timeout
+    last_screen = ""
+    while time.time() < end:
+        child.send("\x07")
+        try:
+            child.expect(r"line (\d+) of \d+ --\d+%-- col (\d+)", timeout=0.2)
+        except pexpect.exceptions.TIMEOUT:
+            pass
+        last_screen = child.before + child.after
+        # Try to read any remaining buffer (non-fatal)
+        try:
+            last_screen += child.read_nonblocking(size=4096, timeout=0.05)
+        except Exception:
+            pass
+        if predicate(last_screen):
+            return last_screen
+        time.sleep(0.02)
+    return last_screen

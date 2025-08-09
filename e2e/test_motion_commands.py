@@ -144,6 +144,39 @@ def test_motion_l_at_eol():
     )
 
 
+def test_motion_j_scrolls_at_bottom():
+    file_content = "line1\nline2\nline3\nline4\nline5\nline6\n"
+    fd, path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(file_content)
+
+        env = os.environ.copy()
+        env.setdefault("TERM", "xterm")
+
+        child = pexpect.spawn(EVI_BIN, [path], env=env, encoding="utf-8")
+        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
+        child.setwinsize(6, 80)
+
+        # Ensure the editor has finished drawing
+        get_screen_and_cursor(child)
+
+        # Move cursor to the bottom line and attempt to move down once more
+        child.send("jjjj")
+        get_screen_and_cursor(child)
+        child.send("j")
+        screen, _ = get_screen_and_cursor(child)
+        clean_screen = screen.split("\x1b[2J")[-1]
+
+        assert "line6" in clean_screen
+        assert "line1" not in clean_screen
+
+        child.send(":q!\r")
+        child.expect(pexpect.EOF)
+    finally:
+        os.unlink(path)
+
+
 # ^ (caret) command is not implemented yet
 # def test_motion_caret():
 #     run_motion_test(

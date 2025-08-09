@@ -105,26 +105,63 @@ impl Command for NextLine {
         if next_row < editor.buffer.lines.len() {
             // 通常の場合：次の行に移動
             let current_cursor_col_in_buffer = editor.cursor_position_in_buffer.col;
-            let mut move_end_of_line = MoveEndOfLine {};
-            move_end_of_line.execute(editor)?;
 
-            editor.cursor_position_in_buffer.row = next_row;
-            if editor.cursor_position_on_screen.row < editor.content_height() - 1 {
-                editor.cursor_position_on_screen.row += 1;
-            } else {
-                editor.window_position_in_buffer.row += 1;
+            // 現在行の残りを一気に飛ばす。折り返し行数を計算し、
+            // スクロールはここでのみ行う。
+            let current_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
+
+            // 現在のカーソル位置が行の何行目に相当するかを計算
+            let mut width = 0usize;
+            let mut cursor_row_in_line = 0usize;
+            for (i, c) in current_line.chars().enumerate() {
+                if i >= editor.cursor_position_in_buffer.col {
+                    break;
+                }
+                width += get_char_width(c) as usize;
+                if width >= editor.terminal_size.width as usize {
+                    width = 0;
+                    cursor_row_in_line += 1;
+                }
             }
 
-            let current_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
-            let num_of_chars_of_current_line = current_line.chars().count();
-            let destination_col = if current_cursor_col_in_buffer > num_of_chars_of_current_line {
-                num_of_chars_of_current_line
+            // 行全体が何行に折り返されるかを計算
+            width = 0;
+            let mut line_height = 1usize;
+            for c in current_line.chars() {
+                width += get_char_width(c) as usize;
+                if width >= editor.terminal_size.width as usize {
+                    width = 0;
+                    line_height += 1;
+                }
+            }
+
+            let remaining_lines = line_height - cursor_row_in_line;
+            let mut new_screen_row =
+                editor.cursor_position_on_screen.row + remaining_lines as u16;
+            if new_screen_row < editor.content_height() {
+                editor.cursor_position_on_screen.row = new_screen_row;
+            } else {
+                let overflow =
+                    new_screen_row - (editor.content_height() - 1);
+                editor.cursor_position_on_screen.row = editor.content_height() - 1;
+                editor.window_position_in_buffer.row += overflow as usize;
+            }
+
+            editor.cursor_position_in_buffer.row = next_row;
+
+            // 目的の列に移動
+            let next_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
+            let num_of_chars_of_next_line = next_line.chars().count();
+            let destination_col = if current_cursor_col_in_buffer > num_of_chars_of_next_line {
+                num_of_chars_of_next_line
             } else {
                 current_cursor_col_in_buffer
             };
+
             editor.cursor_position_in_buffer.col = 0;
             editor.cursor_position_on_screen.col = 0;
             editor.window_position_in_buffer.col = 0;
+
             let mut forward_char = ForwardChar {};
             for _ in 0..destination_col {
                 forward_char.execute(editor)?;

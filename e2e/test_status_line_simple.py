@@ -6,6 +6,8 @@ import tempfile
 import time
 import pexpect
 
+from .conftest import EVI_BIN
+
 # Test file to verify that j key doesn't move cursor to status line
 # Timing robustified: remove large delaybeforesend and add retry wait after sending keys.
 
@@ -18,7 +20,6 @@ def _expect_cursor(child, expected_line=None, max_wait=0.3):
     last_col = None
     while True:
         child.send("\x07")  # Ctrl-G
-        # Short timeout per attempt so we can loop
         child.expect(r"line (\d+) of \d+ --\d+%-- col (\d+)", timeout=0.2)
         line = int(child.match.group(1))
         col = int(child.match.group(2))
@@ -42,7 +43,7 @@ def test_j_doesnt_go_to_status_line():
         env.setdefault("TERM", "xterm")
         
         child = pexpect.spawn(
-            '/evi/target/debug/evi',
+            EVI_BIN,
             [path],
             env=env,
             encoding="utf-8"

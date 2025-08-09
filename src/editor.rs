@@ -130,6 +130,7 @@ pub struct Editor {
     pub terminal_size: TerminalSize,
     // --- New coordinate system (transitional) ---
     pub cursor: BufferPosition,       // バッファ上の論理カーソル
+    pub prev_cursor: BufferPosition,  // 直前のカーソル（スクロール調整用）
     pub window_top_row: usize,        // 画面先頭が示すバッファ行
     pub status_line: String,
     pub command_history: Vec<Vec<ExecutedCommand>>,
@@ -151,6 +152,7 @@ impl Editor {
                 height: 0,
             },
             cursor: BufferPosition { row: 0, col: 0 },
+            prev_cursor: BufferPosition { row: 0, col: 0 },
             window_top_row: 0,
             status_line: "".to_string(),
             command_history: Vec::new(),
@@ -280,9 +282,68 @@ impl Editor {
                     }
                 }
             }
+
+            // ================== 新規ロジック: カーソル行全体をできるだけ収める ==================
+            // 目的: Vim のように j/k で長い行に入ったとき、可能ならその行の最初から最後の wrap までを
+            // 画面に収める（行全体高さ <= content_height の場合）。
+            if self.cursor.row < self.buffer.lines.len() {
+                if let Some(line) = self.buffer.lines.get(self.cursor.row) {
+                    let line_height = calc.line_height(line);
+                    if line_height <= content_height {
+                        // シンプル化: カーソル行の先頭を画面に収め、行末まで全て入る位置に調整。優先順位:
+                        // 1. カーソル行先頭を top に（上下方向一貫性、Vim で長行突入時の体感に近い）
+                        // 2. もし前行を少し表示しても末尾が入るなら一行ずつ上へ広げる
+                        let desired_top = self.cursor.row;
+                        if desired_top != self.window_top_row {
+                            self.window_top_row = desired_top;
+                        }
+                        // 余白があれば前行を追加表示
+                        loop {
+                            if self.window_top_row == 0 { break; }
+                            // 高さ計算: window_top_row-1 から cursor 行まで
+                            let mut total = 0usize; let mut r4 = self.window_top_row - 1; let mut ok = true;
+                            while r4 <= self.cursor.row { if let Some(lx)=self.buffer.lines.get(r4){ total += calc.line_height(lx);} if total>content_height { ok=false; break;} if r4==self.cursor.row{break;} r4+=1; }
+                            if ok { self.window_top_row -=1; } else { break; }
+                        }
+                    }
+                }
+            }
+            // ================================================================================
+            // 前行全体スクロールアウト: 直前が一つ上 & その行が wrap していた場合、次行へ移動後に前行を完全に消す
+            if self.prev_cursor.row + 1 == self.cursor.row && self.cursor.row < self.buffer.lines.len() {
+                if let Some(prev_line) = self.buffer.lines.get(self.prev_cursor.row) {
+                    let prev_h = calc.line_height(prev_line);
+                    if prev_h > 1 && self.window_top_row <= self.prev_cursor.row {
+                        let new_top = self.prev_cursor.row + 1;
+                        if new_top <= self.cursor.row { self.window_top_row = new_top; }
+                    }
+                }
+            }
+
+            // 追加ヒューリスティック: 複数行移動 (count付き j) で長い wrap 行を飛び越えた場合、
+            // その長行（カーソルが現在位置していないもの）が画面に残っていれば押し上げて視界から排除する。
+            // 目的: README などで長い説明行(**Note:** ...)が残り、目的のコードブロック行が上方に来ない問題の解消。
+            if self.cursor.row > self.prev_cursor.row + 1 { // count > 1 の縦移動
+                // window_top_row..cursor.row-1 を走査し、最後の wrap 行を探す
+                let mut last_wrap_row: Option<usize> = None;
+                let upper_limit = self.cursor.row.saturating_sub(1);
+                let mut r = self.window_top_row;
+                while r <= upper_limit && r < self.buffer.lines.len() {
+                    if let Some(l) = self.buffer.lines.get(r) {
+                        if calc.line_height(l) > 1 { last_wrap_row = Some(r); }
+                    }
+                    if r == upper_limit { break; }
+                    r += 1;
+                }
+                if let Some(wrap_row) = last_wrap_row {
+                    if wrap_row < self.cursor.row && self.window_top_row <= wrap_row {
+                        let new_top = wrap_row + 1;
+                        if new_top <= self.cursor.row { self.window_top_row = new_top; }
+                    }
+                }
+            }
         }
     }
-
     pub fn open_file(&mut self, file_path: &PathBuf) {
         self.buffer = Buffer::from_file(file_path);
         self.editing_file_paths.push(file_path.clone());
@@ -492,6 +553,8 @@ impl Editor {
     }
 
     pub fn execute_command(&mut self, command_data: CommandData) -> GenericResult<()> {
+    // 直前カーソル保存（スクロールヒューリスティック用）
+    self.prev_cursor = self.cursor;
         let mut command = command_factory(&command_data);
         if !command.is_modeful() && command.is_reusable() {
             for _ in 0..command_data.count {

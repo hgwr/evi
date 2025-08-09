@@ -4,6 +4,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 
 use crate::{editor::Editor, generic_error::GenericResult};
 
+#[allow(dead_code)]
 pub trait Command {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()>;
 
@@ -38,6 +39,7 @@ pub trait Command {
     fn as_any(&self) -> &dyn Any;
 }
 
+#[allow(dead_code)]
 impl dyn Command {
     pub fn is<T: Command + 'static>(&self) -> bool {
         self.as_any().is::<T>()

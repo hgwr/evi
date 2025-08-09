@@ -2,6 +2,7 @@ use crate::data::TokenType;
 use crate::data::Token;
 
 #[derive(Debug, PartialEq)]
+#[allow(dead_code)]
 enum SubstitutionCommandState {
     None,
     Command,
@@ -15,6 +16,7 @@ enum SubstitutionCommandState {
 }
 
 #[derive(Debug, PartialEq)]
+#[allow(dead_code)]
 enum FileCommandState {
     None,
     Command,
@@ -22,12 +24,14 @@ enum FileCommandState {
     End,
 }
 
+#[allow(dead_code)]
 struct Lexer {
     input: String,
     position: usize,
     current_char: Option<char>,
 }
 
+#[allow(dead_code)]
 impl Lexer {
     fn new(input: String) -> Self {
         let mut lexer = Lexer {
@@ -48,6 +52,7 @@ impl Lexer {
         self.position += 1;
     }
 
+    #[allow(dead_code)]
     fn peek_char(&self) -> Option<char> {
         if self.position >= self.input.len() {
             None

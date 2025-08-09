@@ -277,6 +277,15 @@ impl Editor {
         }
     }
 
+    pub fn delete_last_ex_command_char(&mut self) {
+        if self.ex_command_data.is_empty() {
+            self.set_command_mode();
+        } else {
+            self.ex_command_data.pop();
+            self.status_line = ":".to_owned() + &self.ex_command_data;
+        }
+    }
+
     pub fn snapshot_cursor_data(&self) -> EditorCursorData {
         EditorCursorData {
             cursor_position_on_screen: self.cursor_position_on_screen,

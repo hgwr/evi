@@ -39,6 +39,8 @@ scripts/e2e_docker.sh
 
 This script builds the Docker image based on the official `rust` image, mounts the project directory into the container, and runs `cargo build --verbose` followed by `pytest e2e --verbose`. The Docker image installs the Python dependencies in a virtual environment to avoid system package conflicts.
 
+**Note on macOS:** E2E tests can be unstable and prone to failure on macOS due to timing and terminal handling differences. For reliable test execution, it is recommended to use Docker for e2e tests. The tests run without issues in ChatGPT Codex containers.
+
 Because `scripts/e2e_docker.sh` forwards extra arguments to `pytest` via the
 `PYTEST_ARGS` environment variable, you can enable parallel execution. For
 example:

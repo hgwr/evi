@@ -18,3 +18,16 @@ TBD
 
 TBD
 
+## Testing
+
+### E2E Tests
+
+End-to-end tests are located in the `e2e/` directory and use `pytest` with `pexpect` to test the TUI application.
+
+**Note:** On macOS, e2e tests can be unstable due to timing and terminal handling differences. For reliable test execution, use Docker:
+
+```bash
+scripts/e2e_docker.sh
+```
+
+The tests run without issues in ChatGPT Codex containers. See `e2e/README.md` for detailed testing instructions.

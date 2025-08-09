@@ -105,9 +105,8 @@ impl Command for NextLine {
         if next_row < editor.buffer.lines.len() {
             // 通常の場合：次の行に移動
             let current_cursor_col_in_buffer = editor.cursor_position_in_buffer.col;
-            let mut move_end_of_line = MoveEndOfLine {};
-            move_end_of_line.execute(editor)?;
 
+            // move cursor to the next buffer line
             editor.cursor_position_in_buffer.row = next_row;
             if editor.cursor_position_on_screen.row < editor.content_height() - 1 {
                 editor.cursor_position_on_screen.row += 1;
@@ -115,6 +114,7 @@ impl Command for NextLine {
                 editor.window_position_in_buffer.row += 1;
             }
 
+            // adjust column on the new line
             let current_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
             let num_of_chars_of_current_line = current_line.chars().count();
             let destination_col = if current_cursor_col_in_buffer > num_of_chars_of_current_line {

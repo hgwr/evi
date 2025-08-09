@@ -131,15 +131,33 @@ def test_scroll_past_wrapped_top_line():
         env = os.environ.copy()
         env.setdefault("TERM", "xterm")
         child = pexpect.spawn(EVI_BIN, [path], env=env, encoding="utf-8")
-        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
+        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0"))  # reduce race risk
         child.setwinsize(10, 60)
 
+        # 初期描画を確実に取得
         get_screen_and_cursor(child)
-        child.send("j" * 7)
+
+        # 7回まとめてより逐次送信 + 反映待ちで安定化
+        for _ in range(7):
+            child.send("j")
+            # 反映確認: カーソル情報を取得 (不要でも少し待機)
+            get_screen_and_cursor(child)
+
+        # 追加の1回
         child.send("j")
-        screen, _ = get_screen_and_cursor(child)
-        lines = _parse_screen(screen)
-        assert lines[1].startswith("2")
+
+        # ラップ行スクロール反映を最大数回リトライ
+        max_wait = 0.5
+        deadline = time.time() + max_wait
+        lines = {}
+        while time.time() < deadline:
+            screen, _ = get_screen_and_cursor(child)
+            lines = _parse_screen(screen)
+            # 期待: 最上部が "2" で始まる行(= 2行目以降が表示されている)
+            if 1 in lines and lines[1].startswith("2"):
+                break
+            time.sleep(0.02)
+        assert 1 in lines and lines[1].startswith("2"), f"Top line not scrolled as expected. First line: {lines.get(1)!r}"
 
         child.send(":q!\r")
         child.expect(pexpect.EOF)

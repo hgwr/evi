@@ -216,21 +216,15 @@ impl Command for PreviousLine {
             editor.cursor_position_in_buffer.row -= 1;
 
             let line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
-            let num_of_chars = line.chars().count();
-            let num_of_lines_on_screen = if num_of_chars == 0 {
-                1
-            } else if num_of_chars % editor.terminal_size.width as usize == 0 {
-                num_of_chars / editor.terminal_size.width as usize
-            } else {
-                num_of_chars / editor.terminal_size.width as usize + 1
-            };
+            let num_of_lines_on_screen =
+                get_line_height(line, editor.terminal_size.width);
 
             if editor.cursor_position_on_screen.row >= num_of_lines_on_screen as u16 {
                 editor.cursor_position_on_screen.row -= num_of_lines_on_screen as u16;
-            } else if editor.window_position_in_buffer.row >= num_of_lines_on_screen {
-                editor.window_position_in_buffer.row -= num_of_lines_on_screen;
             } else {
-                editor.window_position_in_buffer.row = 0;
+                editor.window_position_in_buffer.row =
+                    editor.window_position_in_buffer.row.saturating_sub(1);
+                editor.cursor_position_on_screen.row = 0;
             }
 
             let mut forward_char = ForwardChar {};

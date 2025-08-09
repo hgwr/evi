@@ -176,6 +176,36 @@ def test_scroll_up_into_wrapped_line():
         os.unlink(path)
 
 
+def test_last_line_wrapped_visible():
+    long_line = "x" * 120
+    other_lines = "\n".join(str(i) for i in range(1, 10))
+    file_content = f"{other_lines}\n{long_line}\n"
+    fd, path = tempfile.mkstemp()
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(file_content)
+
+        env = os.environ.copy()
+        env.setdefault("TERM", "xterm")
+        child = pexpect.spawn(EVI_BIN, [path], env=env, encoding="utf-8")
+        child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", "0.1"))
+        child.setwinsize(10, 60)
+
+        get_screen_and_cursor(child)
+        child.send("j" * 9)
+        screen, _ = get_screen_and_cursor(child)
+        lines = _parse_screen(screen)
+
+        x_rows = [row for row, text in lines.items() if text.startswith("x")]
+        assert len(x_rows) == 2
+        assert sum(len(lines[row]) for row in x_rows) == 120
+
+        child.send(":q!\r")
+        child.expect(pexpect.EOF)
+    finally:
+        os.unlink(path)
+
+
 # def test_full_width_lines_no_extra_blank_lines():
 #     file_content = "{}\n{}\n{}\n".format("A" * 80, "B" * 80, "C" * 80)
 #     fd, path = tempfile.mkstemp()

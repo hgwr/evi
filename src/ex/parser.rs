@@ -162,7 +162,7 @@ impl Parser {
         if self.accept(TokenType::Command, "d") {
             let delete_command = delete::DeleteLines {
                 line_range: line_range.clone(),
-                editor_cursor_data: None,
+                snapshot: None,
                 text: None,
             };
             return Ok(MyOption::Some(Box::new(delete_command)));

@@ -16,12 +16,10 @@ impl Command for GoToLineCommand {
         let line_number = editor.get_line_number_from(&self.line_address);
 
         log::info!("line_number: {}", line_number);
-        editor.cursor_position_in_buffer.row = 0;
-        editor.cursor_position_in_buffer.col = 0;
-        editor.cursor_position_on_screen.row = 0;
-        editor.cursor_position_on_screen.col = 0;
-        editor.window_position_in_buffer.row = 0;
-        editor.window_position_in_buffer.col = 0;
+    editor.cursor.row = 0;
+    editor.cursor.col = 0;
+    editor.window_top_row = 0;
+    editor.sync_old_from_new(); // keep legacy fields coherent until removal
         if line_number > 0 {
             let mut next_line = NextLine {};
             for _ in 0..line_number {

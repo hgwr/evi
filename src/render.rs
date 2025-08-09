@@ -23,25 +23,27 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
         width: 0,
         height: 0,
     };
-    let start_row: usize = editor.window_position_in_buffer.row;
+    let start_row: usize = editor.window_top_row;
     let lines = &editor.buffer.lines;
-    for line in &lines[start_row..] {
+    'outer: for line in &lines[start_row..] {
+        // 画面内容領域（ステータスライン除く）を超える場合は描画終了
+        if cursor_position_on_writing.height >= editor.content_height() { break; }
         for c in line.chars() {
-            // check if c is double width character
             let char_width = get_char_width(c);
             stdout.queue(style::Print(c))?;
             cursor_position_on_writing.width += char_width as u16;
             if cursor_position_on_writing.width >= editor.terminal_size.width {
+                // 折り返し
                 cursor_position_on_writing.width = 0;
                 cursor_position_on_writing.height += 1;
+                if cursor_position_on_writing.height >= editor.content_height() { break; }
                 stdout.queue(cursor::MoveTo(0, cursor_position_on_writing.height))?;
             }
-            if cursor_position_on_writing.height >= editor.content_height() {
-                break;
-            }
         }
+        // 次の実行位置を次行先頭へ。直前の行で高さが一杯になった場合は抜ける。
         cursor_position_on_writing.width = 0;
         cursor_position_on_writing.height += 1;
+        if cursor_position_on_writing.height >= editor.content_height() { break 'outer; }
         stdout.queue(cursor::MoveTo(0, cursor_position_on_writing.height))?;
     }
 
@@ -58,16 +60,10 @@ pub fn render(editor: &mut Editor, stdout: &mut std::io::Stdout) -> GenericResul
         stdout.queue(style::Print(" "))?;
     }
 
-    // カーソル位置をコンテンツ領域内に制限（ステータス行を超えないように）
-    let cursor_row = std::cmp::min(
-        editor.cursor_position_on_screen.row as u16,
-        editor.content_height() - 1,
-    );
-    
-    stdout.queue(cursor::MoveTo(
-        editor.cursor_position_on_screen.col as u16,
-        cursor_row,
-    ))?;
+    // 新しい計算ベースのカーソル位置
+    let sp = editor.calculate_screen_position();
+    let cursor_row = std::cmp::min(sp.row as u16, editor.content_height() - 1);
+    stdout.queue(cursor::MoveTo(sp.col as u16, cursor_row))?;
     stdout.flush()?;
 
     Ok(())

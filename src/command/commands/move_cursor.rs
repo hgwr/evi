@@ -155,8 +155,27 @@ impl Command for NextLine {
 
             editor.cursor_position_in_buffer.row = next_row;
 
-            // 目的の列に移動
+            // Ensure the entire current line is visible. If the line would
+            // extend beyond the bottom of the screen, scroll the window up
+            // until it fits (leaving at least one blank line after it).
             let next_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
+            let mut next_line_height =
+                get_line_height(next_line, editor.terminal_size.width) as u16;
+            while editor.cursor_position_on_screen.row + next_line_height
+                >= editor.content_height()
+                && editor.window_position_in_buffer.row + 1 < editor.buffer.lines.len()
+            {
+                let first_line = &editor.buffer.lines[editor.window_position_in_buffer.row];
+                let first_line_height =
+                    get_line_height(first_line, editor.terminal_size.width) as u16;
+                editor.window_position_in_buffer.row += 1;
+                editor.cursor_position_on_screen.row = editor
+                    .cursor_position_on_screen
+                    .row
+                    .saturating_sub(first_line_height);
+            }
+
+            // 目的の列に移動
             let num_of_chars_of_next_line = next_line.chars().count();
             let destination_col = if current_cursor_col_in_buffer > num_of_chars_of_next_line {
                 num_of_chars_of_next_line

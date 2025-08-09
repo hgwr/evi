@@ -3,7 +3,7 @@ use std::any::Any;
 use crate::command::base::Command;
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
-use crate::util::get_char_width;
+use crate::util::{get_char_width, get_line_height};
 
 pub struct ForwardChar;
 impl Command for ForwardChar {
@@ -136,15 +136,21 @@ impl Command for NextLine {
             }
 
             let remaining_lines = line_height - cursor_row_in_line;
-            let mut new_screen_row =
-                editor.cursor_position_on_screen.row + remaining_lines as u16;
+            let mut new_screen_row = editor.cursor_position_on_screen.row + remaining_lines as u16;
             if new_screen_row < editor.content_height() {
                 editor.cursor_position_on_screen.row = new_screen_row;
             } else {
-                let overflow =
-                    new_screen_row - (editor.content_height() - 1);
-                editor.cursor_position_on_screen.row = editor.content_height() - 1;
+                let overflow = new_screen_row - (editor.content_height() - 1);
+                let mut removed_screen_lines = 0usize;
+                for i in 0..overflow as usize {
+                    let line = &editor.buffer.lines[editor.window_position_in_buffer.row + i];
+                    removed_screen_lines += get_line_height(line, editor.terminal_size.width);
+                }
                 editor.window_position_in_buffer.row += overflow as usize;
+                let new_row = editor.cursor_position_on_screen.row as isize
+                    + remaining_lines as isize
+                    - removed_screen_lines as isize;
+                editor.cursor_position_on_screen.row = if new_row < 0 { 0 } else { new_row as u16 };
             }
 
             editor.cursor_position_in_buffer.row = next_row;
@@ -173,12 +179,13 @@ impl Command for NextLine {
             if editor.cursor_position_on_screen.row >= editor.content_height() - 1 {
                 // スクロール可能かチェック：現在のウィンドウ位置 + コンテンツ高さが
                 // バッファの総行数より小さい場合
-                let max_window_start = if editor.buffer.lines.len() > editor.content_height() as usize {
-                    editor.buffer.lines.len() - editor.content_height() as usize
-                } else {
-                    0
-                };
-                
+                let max_window_start =
+                    if editor.buffer.lines.len() > editor.content_height() as usize {
+                        editor.buffer.lines.len() - editor.content_height() as usize
+                    } else {
+                        0
+                    };
+
                 if editor.window_position_in_buffer.row < max_window_start {
                     editor.window_position_in_buffer.row += 1;
                     // カーソルの画面上の位置を調整（最下行に保持）

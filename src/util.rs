@@ -4,6 +4,19 @@ pub fn get_char_width(c: char) -> u16 {
     UnicodeWidthChar::width(c).unwrap_or(0) as u16
 }
 
+pub fn get_line_height(line: &str, width: u16) -> usize {
+    let mut w = 0usize;
+    let mut h = 1usize;
+    for c in line.chars() {
+        w += get_char_width(c) as usize;
+        if w >= width as usize {
+            w = 0;
+            h += 1;
+        }
+    }
+    h
+}
+
 pub fn split_line(input: &str) -> Vec<&str> {
     input.split('\n').collect()
 }

@@ -2,7 +2,7 @@ use std::any::Any;
 
 use crossterm::event::{KeyCode, KeyModifiers};
 
-use crate::{data::LineRange, editor::Editor, generic_error::GenericResult};
+use crate::{editor::Editor, generic_error::GenericResult};
 
 pub trait Command {
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()>;

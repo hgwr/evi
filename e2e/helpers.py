@@ -7,6 +7,22 @@ from .conftest import EVI_BIN
 
 
 DEFAULT_DELAY = 0.0  # unified zero delay for deterministic tests
+DEFAULT_POLL_TIMEOUT = 0.5
+SHORT_SLEEP = 0.02
+
+def spawn_evi(path: str, rows: int = 24, cols: int = 80):
+    """Spawn evi with consistent env/window setup."""
+    env = os.environ.copy()
+    env.setdefault("TERM", "xterm")
+    child = pexpect.spawn(
+        EVI_BIN,
+        [path],
+        env=cast(os._Environ[str], env),
+        encoding="utf-8"
+    )
+    child.delaybeforesend = float(os.getenv("EVI_DELAY_BEFORE_SEND", str(DEFAULT_DELAY)))
+    child.setwinsize(rows, cols)
+    return child
 
 def run_commands(commands, initial_content: str = "", exit_cmd: str = ":wq\r"):
     fd, path = tempfile.mkstemp()
@@ -45,7 +61,7 @@ def run_commands(commands, initial_content: str = "", exit_cmd: str = ":wq\r"):
         os.unlink(path)
 
 
-def expect_cursor(child: pexpect.spawn, expected_line: Optional[int] = None, timeout: float = 0.3) -> Tuple[int, int]:
+def expect_cursor(child: pexpect.spawn, expected_line: Optional[int] = None, timeout: float = DEFAULT_POLL_TIMEOUT) -> Tuple[int, int]:
     """Fetch current cursor (line, col) via Ctrl-G; optionally wait until line matches.
 
     Returns (line, col).
@@ -54,15 +70,15 @@ def expect_cursor(child: pexpect.spawn, expected_line: Optional[int] = None, tim
     last = (1, 1)
     while True:
         child.send("\x07")
-        child.expect(r"line (\d+) of \d+ --\d+%-- col (\d+)", timeout=0.2)
-        row = int(child.match.group(1))
-        col = int(child.match.group(2))
+        child.expect(r"line (\d+) of \d+ --\d+%-- col (\d+)", timeout=0.2)  # type: ignore[arg-type]
+        row = int(child.match.group(1))  # type: ignore[union-attr]
+        col = int(child.match.group(2))  # type: ignore[union-attr]
         last = (row, col)
         if expected_line is None or row == expected_line:
             return last
         if time.time() >= deadline:
             return last
-        time.sleep(0.02)
+        time.sleep(SHORT_SLEEP)
 
 
 def wait_until_top_line(child: pexpect.spawn, predicate: Callable[[str], bool], timeout: float = 0.5) -> str:
@@ -78,7 +94,8 @@ def wait_until_top_line(child: pexpect.spawn, predicate: Callable[[str], bool], 
             child.expect(r"line (\d+) of \d+ --\d+%-- col (\d+)", timeout=0.2)
         except pexpect.exceptions.TIMEOUT:
             pass
-        last_screen = child.before + child.after
+        # mypy: child.before/after are str when match succeeds; ignore union noise
+        last_screen = (child.before or "") + (child.after or "")  # type: ignore[operator]
         # Try to read any remaining buffer (non-fatal)
         try:
             last_screen += child.read_nonblocking(size=4096, timeout=0.05)
@@ -86,5 +103,5 @@ def wait_until_top_line(child: pexpect.spawn, predicate: Callable[[str], bool], 
             pass
         if predicate(last_screen):
             return last_screen
-        time.sleep(0.02)
+        time.sleep(SHORT_SLEEP)
     return last_screen

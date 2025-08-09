@@ -136,7 +136,7 @@ impl Command for NextLine {
             }
 
             let remaining_lines = line_height - cursor_row_in_line;
-            let mut new_screen_row = editor.cursor_position_on_screen.row + remaining_lines as u16;
+            let new_screen_row = editor.cursor_position_on_screen.row + remaining_lines as u16;
             if new_screen_row < editor.content_height() {
                 editor.cursor_position_on_screen.row = new_screen_row;
             } else {
@@ -159,7 +159,7 @@ impl Command for NextLine {
             // extend beyond the bottom of the screen, scroll the window up
             // until it fits (leaving at least one blank line after it).
             let next_line = &editor.buffer.lines[editor.cursor_position_in_buffer.row];
-            let mut next_line_height =
+            let next_line_height =
                 get_line_height(next_line, editor.terminal_size.width) as u16;
             while editor.cursor_position_on_screen.row + next_line_height
                 >= editor.content_height()

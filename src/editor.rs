@@ -513,7 +513,7 @@ impl Editor {
             crate::data::LineAddressType::Relative(SimpleLineAddressType::AllLines, i) => {
                 (self.buffer.lines.len().saturating_sub(1) as isize) + i
             },
-            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), i) => {
+            crate::data::LineAddressType::Relative(SimpleLineAddressType::Pattern(_), _i) => {
                 // TODO: Implement
                 unimplemented!()
             },

@@ -2,7 +2,7 @@ use std::any::Any;
 
 use crate::command::base::Command;
 use crate::command::commands::move_cursor::NextLine;
-use crate::data::{LineAddressType, LineRange, SimpleLineAddressType};
+use crate::data::{LineAddressType};
 use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 

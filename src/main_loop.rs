@@ -69,6 +69,25 @@ pub fn main_loop(editor: &mut Editor) -> GenericResult<()> {
                             editor.set_command_mode();
                             editor.status_line = "".to_string();
                         }
+                        KeyData {
+                            key_code: event::KeyCode::Backspace,
+                            ..
+                        }
+                        | KeyData {
+                            key_code: event::KeyCode::Char('\u{8}'),
+                            ..
+                        }
+                        | KeyData {
+                            key_code: event::KeyCode::Char('\u{7f}'),
+                            ..
+                        }
+                        | KeyData {
+                            key_code: event::KeyCode::Char('h'),
+                            modifiers: KeyModifiers::CONTROL,
+                            ..
+                        } => {
+                            editor.delete_last_ex_command_char();
+                        }
                         _ => {
                             editor.append_ex_command(key_data);
                         }

@@ -223,7 +223,18 @@ impl Editor {
         // window_top_row..cursor.row-1 までの総高さ + cursor 行内の相対高さ +1 が content_height を超えるか評価。
         // 精密計算のため一度 screen_position を取得し、過剰分だけ jump。
         let sp = self.calculate_screen_position();
-        if sp.row >= content_height {
+        // Vim 互換: 同一論理行内のラップ境界を下方向へ移動中は、最終表示行を超えない限りスクロールしない
+        let same_line_downward = self.prev_cursor.row == self.cursor.row && self.prev_cursor.col < self.cursor.col;
+        if same_line_downward {
+            // 同じ論理行で物理行高さが content_height-1 以内ならスクロール抑止
+            if sp.row + 1 /* visible count */ <= content_height { /* keep */ } else {
+                // 物理的に下端を超えた場合のみ最小限スクロール
+                if sp.row >= content_height {
+                    let diff = sp.row + 1 - content_height; // overflow
+                    for _ in 0..diff { if self.window_top_row + 1 < self.buffer.lines.len() { self.window_top_row += 1; } }
+                }
+            }
+        } else if sp.row >= content_height {
             // どれだけ overflow しているか
             let overflow = sp.row + 1 - content_height; // +1: 0-based -> count
             // overflow 行数だけ上に押し上げたいが、単純に window_top_row += overflow すると
@@ -307,39 +318,7 @@ impl Editor {
                 }
             }
             // ================================================================================
-            // 前行全体スクロールアウト: 直前が一つ上 & その行が wrap していた場合、次行へ移動後に前行を完全に消す
-            if self.prev_cursor.row + 1 == self.cursor.row && self.cursor.row < self.buffer.lines.len() {
-                if let Some(prev_line) = self.buffer.lines.get(self.prev_cursor.row) {
-                    let prev_h = calc.line_height(prev_line);
-                    if prev_h > 1 && self.window_top_row <= self.prev_cursor.row {
-                        let new_top = self.prev_cursor.row + 1;
-                        if new_top <= self.cursor.row { self.window_top_row = new_top; }
-                    }
-                }
-            }
-
-            // 追加ヒューリスティック: 複数行移動 (count付き j) で長い wrap 行を飛び越えた場合、
-            // その長行（カーソルが現在位置していないもの）が画面に残っていれば押し上げて視界から排除する。
-            // 目的: README などで長い説明行(**Note:** ...)が残り、目的のコードブロック行が上方に来ない問題の解消。
-            if self.cursor.row > self.prev_cursor.row + 1 { // count > 1 の縦移動
-                // window_top_row..cursor.row-1 を走査し、最後の wrap 行を探す
-                let mut last_wrap_row: Option<usize> = None;
-                let upper_limit = self.cursor.row.saturating_sub(1);
-                let mut r = self.window_top_row;
-                while r <= upper_limit && r < self.buffer.lines.len() {
-                    if let Some(l) = self.buffer.lines.get(r) {
-                        if calc.line_height(l) > 1 { last_wrap_row = Some(r); }
-                    }
-                    if r == upper_limit { break; }
-                    r += 1;
-                }
-                if let Some(wrap_row) = last_wrap_row {
-                    if wrap_row < self.cursor.row && self.window_top_row <= wrap_row {
-                        let new_top = wrap_row + 1;
-                        if new_top <= self.cursor.row { self.window_top_row = new_top; }
-                    }
-                }
-            }
+            // 下方向 overscroll 防止のため、以前存在した長行除去ヒューリスティックを削除。
 
             // 上方向移動直後に、カーソル行が multi-wrap でかつまだ全体が先頭から表示されていなければ昇格
             // 旧: カーソル multi-wrap 行直接昇格は上部ロジックで包含済み

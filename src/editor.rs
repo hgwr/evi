@@ -136,6 +136,9 @@ pub struct Editor {
     pub command_history: Vec<Vec<ExecutedCommand>>,
     pub last_input_string: String,
     pub ex_command_data: String,
+    // 直近で multi-wrap 行をトップに昇格させた場合、その行番号を保持し、連続する上方向移動で
+    // trivial 行(#/空) を再度前に挿入して視界を汚さないようにするためのアンカー。
+    promoted_wrap_anchor: Option<usize>,
 }
 
 impl Editor {
@@ -158,6 +161,7 @@ impl Editor {
             command_history: Vec::new(),
             last_input_string: "".to_string(),
             ex_command_data: "".to_string(),
+            promoted_wrap_anchor: None,
         }
     }
 
@@ -184,9 +188,36 @@ impl Editor {
         let width = self.terminal_size.width;
     let _ = width; // width は今後の拡張用（行高キャッシュ等）
         let content_height = self.content_height() as usize;
+    info!("ENSURE start prev_row={} cur_row={} top={} content_h={}", self.prev_cursor.row, self.cursor.row, self.window_top_row, content_height);
 
-        // 上方向: カーソル行が window_top_row より上
-        if self.cursor.row < self.window_top_row { self.window_top_row = self.cursor.row; }
+        // EOF で移動失敗 (例: 最終行で 'j') の場合はスクロール副作用を避ける。
+        // prev_cursor は execute_command 開始時点のカーソルを保持しているため、
+        // 行が変わっていなければ論理的な縦移動は成立していないと判断できる。
+        if self.prev_cursor == self.cursor {
+            // 行が変わっていない => 縦移動失敗。下方向 EOF 試行でかつ最終行なら副作用回避。
+            if self.cursor.row == self.buffer.lines.len().saturating_sub(1) {
+                return;
+            }
+            // 上方向 (k) の場合は wrap 行頭露出ヒューリスティック等が働く余地があるため続行。
+        }
+
+    // 上方向: カーソル行が window_top_row より上
+    if self.cursor.row < self.window_top_row { self.window_top_row = self.cursor.row; }
+    let upward_move = self.prev_cursor.row > self.cursor.row;
+
+        // 上方向移動後: window_top_row..cursor.row の範囲で最後に出現する multi-wrap 行を top にする（カーソルが少なくともその行以降なら）
+        if self.prev_cursor.row > self.cursor.row {
+            let calc = WrappingCalculator::new(self.terminal_size.width);
+            // 1) 現在 window_top_row..cursor.row の範囲で最後に出現する multi-wrap 行を探す
+            let mut last_wrap: Option<usize> = None;
+            let start = self.window_top_row.min(self.cursor.row);
+            for r in start..=self.cursor.row { if let Some(l)=self.buffer.lines.get(r){ if calc.line_height(l)>1 { last_wrap = Some(r); } } }
+            if let Some(wrap_row) = last_wrap { if wrap_row > self.window_top_row { info!("PROMOTE last_wrap in-range {} -> top", wrap_row); self.window_top_row = wrap_row; self.promoted_wrap_anchor = Some(wrap_row); } }
+            // 2) もし in-range で見つからず & まだ window_top_row が multi-wrap 行より下にあれば、カーソル行まで遡って最初の multi-wrap を表示
+            if last_wrap.is_none() {
+                for r in (0..=self.cursor.row).rev() { if let Some(l) = self.buffer.lines.get(r) { if calc.line_height(l) > 1 { if self.window_top_row > r { info!("PROMOTE backward_wrap {} -> top (was {})", r, self.window_top_row); self.window_top_row = r; self.promoted_wrap_anchor = Some(r); } break; } } }
+            }
+        }
 
         // 下方向: 行高さ（wrap 含む）を高速に見積もり。
         // window_top_row..cursor.row-1 までの総高さ + cursor 行内の相対高さ +1 が content_height を超えるか評価。
@@ -215,7 +246,7 @@ impl Editor {
         // これにより長い行へ k で近づいた際に、その長い行の頭が自然に見えるようになる。
         {
             let calc = WrappingCalculator::new(self.terminal_size.width);
-            let at_file_top = self.window_top_row == 0;
+            let _at_file_top = self.window_top_row == 0; // unused
             // 条件: カーソル行より上に巨大行が存在し、現在 top がまだその行に達していない場合
             // 直上行を 1 行ずつ表示領域に含められる限り引き上げる
             let mut changed = true;
@@ -226,6 +257,8 @@ impl Editor {
                 if prev_row >= self.buffer.lines.len() { break; }
                 let prev_height = if let Some(l) = self.buffer.lines.get(prev_row) { calc.line_height(l) } else { 1 };
                 let sp_now = self.calculate_screen_position();
+                // 上方向直後に wrap アンカーがある場合は前行追加による押し下げ禁止
+                if upward_move { if let Some(a)=self.promoted_wrap_anchor { if self.window_top_row==a { break; } } }
                 // 既に十分上方向に余白があり、追加で前行を含めても可視高さを超えないなら引き上げ
                 if sp_now.row + prev_height + 1 < content_height { // +1: 少なくとも 1 行は下方向余裕
                     self.window_top_row -= 1;
@@ -233,55 +266,9 @@ impl Editor {
                 }
             }
 
-            // 追加ヒューリスティック: 先頭が空行/見出し(#)で、その下に multi-wrap 行があるなら
-            // 空行/見出しを押し出して wrap 行を上端に揃える（テスト期待対応）
-            if !at_file_top && self.window_top_row + 1 < self.buffer.lines.len() {
-                let top_line = &self.buffer.lines[self.window_top_row];
-                let next_line = &self.buffer.lines[self.window_top_row + 1];
-                let next_height = calc.line_height(next_line);
-                if next_height > 1 {
-                    let top_is_trivial = top_line.is_empty() || top_line.starts_with('#');
-                    if top_is_trivial {
-                        // シフトしてもカーソルがはみ出さないか（再計算で保証）
-                        self.window_top_row += 1;
-                        let sp_after = self.calculate_screen_position();
-                        if sp_after.row >= content_height {
-                            // 戻す（不適切）
-                            self.window_top_row -= 1;
-                        }
-                    }
-                }
-            }
+            // trivial 押し出しヒューリスティックは wrap アンカー方式により不要となったため削除
 
-            // ラップ行昇格ヒューリスティック: 画面内に複数行に折り返す行があるが、
-            // その行より前に trivial 行(空/見出し) しか無ければその行をトップにする
-            if !at_file_top {
-                let mut first_wrap_row_opt = None;
-                let mut h_acc = 0usize;
-                let mut r = self.window_top_row;
-                while r < self.buffer.lines.len() && h_acc < content_height {
-                    let line = &self.buffer.lines[r];
-                    let h = calc.line_height(line);
-                    if h > 1 { first_wrap_row_opt = Some(r); break; }
-                    h_acc += h;
-                    r += 1;
-                }
-                if let Some(wrap_row) = first_wrap_row_opt {
-                    if wrap_row > self.window_top_row {
-                        let trivial_prefix = (self.window_top_row..wrap_row).all(|ri| {
-                            if let Some(l) = self.buffer.lines.get(ri) { l.is_empty() || l.starts_with('#') } else { true }
-                        });
-                        if trivial_prefix {
-                            let original_top = self.window_top_row;
-                            self.window_top_row = wrap_row;
-                            let sp_after = self.calculate_screen_position();
-                            if sp_after.row >= content_height { // revert if cursor hidden
-                                self.window_top_row = original_top;
-                            }
-                        }
-                    }
-                }
-            }
+            // 旧: trivial 前置判定付き wrap 行昇格は簡略化済み
 
             // ================== 新規ロジック: カーソル行全体をできるだけ収める ==================
             // 目的: Vim のように j/k で長い行に入ったとき、可能ならその行の最初から最後の wrap までを
@@ -293,17 +280,28 @@ impl Editor {
                         // シンプル化: カーソル行の先頭を画面に収め、行末まで全て入る位置に調整。優先順位:
                         // 1. カーソル行先頭を top に（上下方向一貫性、Vim で長行突入時の体感に近い）
                         // 2. もし前行を少し表示しても末尾が入るなら一行ずつ上へ広げる
+
+                // シンプル上方向昇格: 上方向移動直後で、トップ行が trivial(#/空) かつその直後以降に
+                // multi-wrap 行が存在し、カーソルがその wrap 行より下にいる場合、wrap 行をトップに。
+                // （旧 trivial 前置探査ロジック削除）
                         let desired_top = self.cursor.row;
-                        if desired_top != self.window_top_row {
+                        // 既に cursor 行より上の wrap 行をトップに昇格済みの場合（window_top_row < cursor.row）
+                        // は上書きせず保持する。cursor 行が画面外に押し出されるケースのみ補正。
+                        if self.window_top_row > desired_top {
                             self.window_top_row = desired_top;
                         }
-                        // 余白があれば前行を追加表示
-                        loop {
-                            if self.window_top_row == 0 { break; }
-                            // 高さ計算: window_top_row-1 から cursor 行まで
-                            let mut total = 0usize; let mut r4 = self.window_top_row - 1; let mut ok = true;
-                            while r4 <= self.cursor.row { if let Some(lx)=self.buffer.lines.get(r4){ total += calc.line_height(lx);} if total>content_height { ok=false; break;} if r4==self.cursor.row{break;} r4+=1; }
-                            if ok { self.window_top_row -=1; } else { break; }
+                        // 余白があれば前行を追加表示。ただし直前に wrap 行をトップ昇格させた直後の上方向移動では
+                        // その wrap 行より前の trivial 行を再挿入しない（テスト要件: 長行をトップに表示）。
+                        let prevent_upward_fill = upward_move && self.promoted_wrap_anchor.is_some() && self.promoted_wrap_anchor == Some(self.window_top_row);
+                        if prevent_upward_fill { info!("SKIP upward fill anchor={} top={}", self.promoted_wrap_anchor.unwrap(), self.window_top_row); }
+                        if !prevent_upward_fill {
+                            loop {
+                                if self.window_top_row == 0 { break; }
+                                // 高さ計算: window_top_row-1 から cursor 行まで
+                                let mut total = 0usize; let mut r4 = self.window_top_row - 1; let mut ok = true;
+                                while r4 <= self.cursor.row { if let Some(lx)=self.buffer.lines.get(r4){ total += calc.line_height(lx);} if total>content_height { ok=false; break;} if r4==self.cursor.row{break;} r4+=1; }
+                                if ok { self.window_top_row -=1; } else { break; }
+                            }
                         }
                     }
                 }
@@ -342,7 +340,13 @@ impl Editor {
                     }
                 }
             }
+
+            // 上方向移動直後に、カーソル行が multi-wrap でかつまだ全体が先頭から表示されていなければ昇格
+            // 旧: カーソル multi-wrap 行直接昇格は上部ロジックで包含済み
         }
+        // 下方向へ移動したらアンカー解除
+    if self.prev_cursor.row < self.cursor.row { self.promoted_wrap_anchor = None; }
+    info!("ENSURE end   prev_row={} cur_row={} top={}", self.prev_cursor.row, self.cursor.row, self.window_top_row);
     }
     pub fn open_file(&mut self, file_path: &PathBuf) {
         self.buffer = Buffer::from_file(file_path);

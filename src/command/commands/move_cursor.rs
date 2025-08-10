@@ -100,10 +100,7 @@ impl Command for NextLine {
                     }
                 }
             }
-        } else {
-            // 最終行: 下スクロール試行
-            if editor.window_top_row + 1 < editor.buffer.lines.len() { editor.window_top_row += 1; }
-        }
+    } // EOF 時はスクロールしない（行移動が無いので表示維持）
 
         // --- transitional sync (new->old) ---
         editor.sync_old_from_new();

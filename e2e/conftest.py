@@ -1,6 +1,8 @@
 import os
 import subprocess
 import pytest
+import pexpect
+
 
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 EVI_BIN = os.path.join(ROOT_DIR, 'target', 'debug', 'evi')
@@ -28,3 +30,16 @@ os.environ.setdefault('EVI_PEXPECT_TIMEOUT', '0.2')
 def build_evi():
     if not os.path.exists(EVI_BIN):
         subprocess.run(['cargo', 'build'], cwd=ROOT_DIR, check=True)
+
+@pytest.fixture(autouse=True)
+def ensure_terminal_cleanup():
+    # Each test yields; after test, attempt to restore terminal if leftover raw mode remains.
+    yield
+    # Heuristic: spawn and immediately exit to force terminal reset (Editor::drop handles it)
+    try:
+        child = pexpect.spawn(EVI_BIN, encoding='utf-8')
+        child.delaybeforesend = 0.0
+        child.send(':q!\r')
+        child.expect(pexpect.EOF, timeout=0.5)
+    except Exception:
+        pass

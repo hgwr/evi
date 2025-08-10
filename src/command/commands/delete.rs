@@ -2,18 +2,21 @@ use std::any::Any;
 
 use crate::command::base::Command;
 use crate::command::region::get_region;
-use crate::editor::{Editor, NewCursorSnapshot};
+use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DeleteChar {
-    pub snapshot: Option<NewCursorSnapshot>,
+    pub editor_cursor_data: Option<crate::editor::EditorCursorData>,
     pub char: Option<char>,
 }
 
 impl Default for DeleteChar {
     fn default() -> Self {
-    Self { snapshot: None, char: None }
+        Self {
+            editor_cursor_data: None,
+            char: None,
+        }
     }
 }
 
@@ -28,36 +31,42 @@ impl Command for DeleteChar {
 
     fn execute(&mut self, editor: &mut Editor) -> GenericResult<()> {
         editor.is_dirty = true;
-        editor.sync_new_from_old();
-        let row = editor.cursor.row;
-        let col = editor.cursor.col;
-        self.snapshot = Some(editor.snapshot_new_cursor());
-        if let Some(line) = editor.buffer.lines.get(row).cloned() {
-            let num = line.chars().count();
-            if col < num { // cursor sits on a valid char index
-                let ch = line.chars().nth(col).unwrap();
-                self.char = Some(ch);
-                let new_line: String = line
-                    .chars()
-                    .take(col)
-                    .chain(line.chars().skip(col + 1))
-                    .collect();
-                editor.buffer.lines[row] = new_line.clone();
-                let new_len = new_line.chars().count();
-                if col >= new_len {
-                    editor.cursor.col = if new_len == 0 { 0 } else { new_len - 1 };
+        let row = editor.cursor_position_in_buffer.row;
+        let col = editor.cursor_position_in_buffer.col;
+        self.editor_cursor_data = Some(editor.snapshot_cursor_data());
+        let line = &editor.buffer.lines[row];
+        let num_of_chars = line.chars().count();
+        if col < num_of_chars {
+            let char = line.chars().nth(col).unwrap();
+            self.char = Some(char);
+            let new_line: String = line
+                .chars()
+                .take(col)
+                .chain(line.chars().skip(col + 1))
+                .collect();
+            let new_num_of_chars = new_line.chars().count();
+            editor.buffer.lines[row] = new_line;
+            if col >= new_num_of_chars && new_num_of_chars > 0 {
+                editor.cursor_position_in_buffer.col = new_num_of_chars - 1;
+                if editor.cursor_position_on_screen.col > 0 {
+                    editor.cursor_position_on_screen.col -= 1;
+                } else {
+                    if editor.cursor_position_on_screen.row > 0 {
+                        editor.cursor_position_on_screen.row -= 1;
+                    } else if editor.window_position_in_buffer.row > 0 {
+                        editor.window_position_in_buffer.row -= 1;
+                    }
+                    editor.cursor_position_on_screen.col = editor.terminal_size.width - 1;
                 }
             }
         }
-        editor.ensure_cursor_visible();
-        editor.sync_old_from_new();
         Ok(())
     }
 
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
-    let snap = self.snapshot.unwrap();
-    let row = snap.cursor.row;
-    let col = snap.cursor.col;
+        let editor_cursor_data = self.editor_cursor_data.unwrap();
+        let row = editor_cursor_data.cursor_position_in_buffer.row;
+        let col = editor_cursor_data.cursor_position_in_buffer.col;
         let char = self.char.unwrap();
 
         let line = &editor.buffer.lines[row];
@@ -68,7 +77,7 @@ impl Command for DeleteChar {
             .chain(line.chars().skip(col))
             .collect();
         editor.buffer.lines[row] = new_line;
-    editor.restore_new_cursor(snap);
+        editor.restore_cursor_data(editor_cursor_data);
 
         Ok(())
     }
@@ -87,14 +96,18 @@ impl Command for DeleteChar {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Delete {
-    pub snapshot: Option<NewCursorSnapshot>,
+    pub editor_cursor_data: Option<crate::editor::EditorCursorData>,
     pub text: Option<String>,
     pub jump_command_data_opt: Option<crate::command::base::JumpCommandData>,
 }
 
 impl Default for Delete {
     fn default() -> Self {
-    Self { snapshot: None, text: None, jump_command_data_opt: None }
+        Self {
+            editor_cursor_data: None,
+            text: None,
+            jump_command_data_opt: None,
+        }
     }
 }
 
@@ -111,17 +124,24 @@ impl Command for Delete {
         if let Some(jump_command_data) = self.jump_command_data_opt {
             let region = get_region(editor, jump_command_data);
             if let Ok(region) = region {
-                let start = region.start; // NewCursorSnapshot
-                let end = region.end;
-                use crate::buffer::CursorPositionInBuffer;
-                let start_pos = CursorPositionInBuffer { row: start.cursor.row, col: start.cursor.col };
-                let end_pos = CursorPositionInBuffer { row: end.cursor.row, col: end.cursor.col };
-                if let Ok(deleted) = editor.buffer.delete(start_pos, end_pos) {
+                let start_cursor_data = region.start;
+                let end_cursor_data = region.end;
+                if let Ok(deleted) = editor.buffer.delete(
+                    start_cursor_data.cursor_position_in_buffer,
+                    end_cursor_data.cursor_position_in_buffer,
+                ) {
                     self.text = Some(deleted);
-                    // determine min position
-                    let (min_snap, _) = if (start.cursor.row, start.cursor.col) <= (end.cursor.row, end.cursor.col) { (start, end) } else { (end, start) };
-                    editor.restore_new_cursor(min_snap);
-                    self.snapshot = Some(min_snap);
+                    if start_cursor_data
+                        .cursor_position_in_buffer
+                        .cmp(&end_cursor_data.cursor_position_in_buffer)
+                        == std::cmp::Ordering::Greater
+                    {
+                        editor.restore_cursor_data(end_cursor_data);
+                        self.editor_cursor_data = Some(end_cursor_data);
+                    } else {
+                        editor.restore_cursor_data(start_cursor_data);
+                        self.editor_cursor_data = Some(start_cursor_data);
+                    }
                 }
             }
         }
@@ -131,11 +151,11 @@ impl Command for Delete {
 
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
         if let Some(text) = &self.text {
-            if let Some(snap) = &self.snapshot {
-                let row = snap.cursor.row;
-                let col = snap.cursor.col;
+            if let Some(cursor_data) = &self.editor_cursor_data {
+                let row = cursor_data.cursor_position_in_buffer.row;
+                let col = cursor_data.cursor_position_in_buffer.col;
                 editor.buffer.insert(row, col, text)?;
-                editor.restore_new_cursor(*snap);
+                editor.restore_cursor_data(*cursor_data);
             }
         }
         Ok(())
@@ -147,7 +167,7 @@ impl Command for Delete {
 }
 
 pub struct DeleteLines {
-    pub snapshot: Option<NewCursorSnapshot>,
+    pub editor_cursor_data: Option<crate::editor::EditorCursorData>,
     pub line_range: crate::data::LineRange,
     pub text: Option<String>,
 }
@@ -168,12 +188,8 @@ impl Command for DeleteLines {
             col: 0,
         };
 
-    editor.sync_new_from_old();
-    // snapshot before deletion but adjust cursor to start row
-    let mut snap = editor.snapshot_new_cursor();
-    snap.cursor.row = start_row;
-    snap.cursor.col = 0;
-    self.snapshot = Some(snap);
+        self.editor_cursor_data = Some(editor.snapshot_cursor_data());
+        self.editor_cursor_data.as_mut().unwrap().cursor_position_in_buffer = start_cursor_data;
 
         if let Ok(deleted) = editor.buffer.delete(
             start_cursor_data,
@@ -186,10 +202,10 @@ impl Command for DeleteLines {
     }
 
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
-    if let Some(snap) = &self.snapshot {
+        if let Some(editor_cursor_data) = &self.editor_cursor_data {
             if let Some(text) = &self.text {
-        let row = snap.cursor.row;
-        let col = snap.cursor.col;
+                let row = editor_cursor_data.cursor_position_in_buffer.row;
+                let col = editor_cursor_data.cursor_position_in_buffer.col;
                 editor.buffer.insert(row, col, text)?;
             }
         }

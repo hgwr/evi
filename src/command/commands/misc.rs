@@ -18,13 +18,13 @@ impl Command for DisplayFile {
             editor.status_line = format!(
                 "\"{}\" line {} of {} --{}%-- col {} char {}",
                 file_name,
-                editor.cursor.row + 1,
+                editor.cursor_position_in_buffer.row + 1,
                 editor.buffer.lines.len(),
-                (editor.cursor.row + 1) * 100 / editor.buffer.lines.len(),
-                editor.cursor.col + 1,
-                editor.buffer.lines[editor.cursor.row]
+                (editor.cursor_position_in_buffer.row + 1) * 100 / editor.buffer.lines.len(),
+                editor.cursor_position_in_buffer.col + 1,
+                editor.buffer.lines[editor.cursor_position_in_buffer.row]
                     .chars()
-                    .nth(editor.cursor.col)
+                    .nth(editor.cursor_position_in_buffer.col)
                     .unwrap_or(' ')
             );
         }
@@ -52,9 +52,8 @@ mod tests {
     #[test]
     fn display_file_with_content() {
         let mut editor = Editor::new();
-    editor.buffer.lines = vec!["abc".to_string()];
-    editor.cursor.col = 1;
-    editor.sync_old_from_new();
+        editor.buffer.lines = vec!["abc".to_string()];
+        editor.cursor_position_in_buffer.col = 1;
         let mut cmd = DisplayFile;
         cmd.execute(&mut editor).unwrap();
         assert_eq!(

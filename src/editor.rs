@@ -12,87 +12,10 @@ use crate::{command::factory::command_factory, data::{LineAddressType, SimpleLin
 use crate::render::render;
 use crate::{buffer::Buffer, command::base::ExecutedCommand, generic_error::GenericResult};
 use crate::{
+    buffer::CursorPositionInBuffer,
     command::base::{Command, CommandData},
     ex::parser::Parser,
 };
-
-// ================= New Coordinate System (WIP transitional) =================
-// Buffer 上の論理位置（折り返し前）
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct BufferPosition {
-    pub row: usize,
-    pub col: usize,
-}
-
-// BufferPosition::new は単純なので直接リテラル構築を推奨
-
-// 画面上の物理位置（折り返し後）
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ScreenPosition {
-    pub row: usize,
-    pub col: u16, // col は端末幅に依存
-}
-
-impl ScreenPosition {
-    pub fn new(row: usize, col: u16) -> Self { Self { row, col } }
-}
-
-/// 折り返し計算の責務を分離する計算器
-pub struct WrappingCalculator {
-    terminal_width: u16,
-}
-
-impl WrappingCalculator {
-    pub fn new(terminal_width: u16) -> Self { Self { terminal_width } }
-
-    pub fn line_height(&self, line: &str) -> usize {
-        crate::util::get_line_height(line, self.terminal_width)
-    }
-
-    /// バッファ位置を（window_top_row を基準とした）画面位置へマッピング
-    pub fn buffer_to_screen_position(
-        &self,
-        buffer: &Buffer,
-        window_top_row: usize,
-        target: BufferPosition,
-    ) -> ScreenPosition {
-        use crate::util::get_char_width;
-
-        // 先行行の高さを積算
-        let mut screen_row = 0usize;
-        for r in window_top_row..target.row {
-            if let Some(line) = buffer.lines.get(r) {
-                screen_row += self.line_height(line);
-            } else {
-                break;
-            }
-        }
-
-        // 対象行内での折り返し位置を計算
-        let mut col_width = 0usize; // 現在のラップ行での幅
-        let mut wrap_row_offset = 0usize; // 対象行内での折り返し行インデックス
-        if let Some(line) = buffer.lines.get(target.row) {
-            for (i, c) in line.chars().enumerate() {
-                if i >= target.col { break; }
-                let w = get_char_width(c) as usize;
-                if col_width + w > self.terminal_width as usize || col_width + w == self.terminal_width as usize {
-                    // 折り返し
-                    if col_width + w >= self.terminal_width as usize {
-                        wrap_row_offset += 1;
-                        col_width = 0;
-                    }
-                }
-                col_width += w;
-                if col_width >= self.terminal_width as usize {
-                    wrap_row_offset += 1;
-                    col_width = 0;
-                }
-            }
-        }
-
-        ScreenPosition::new(screen_row + wrap_row_offset, col_width as u16)
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TerminalSize {
@@ -101,16 +24,22 @@ pub struct TerminalSize {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Region {
-    pub start: NewCursorSnapshot,
-    pub end: NewCursorSnapshot,
+pub struct CursorPositionOnScreen {
+    pub row: u16,
+    pub col: u16,
 }
 
-// New (transitional) snapshot type using new coordinate system only
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NewCursorSnapshot {
-    pub cursor: BufferPosition,
-    pub window_top_row: usize,
+pub struct EditorCursorData {
+    pub cursor_position_on_screen: CursorPositionOnScreen,
+    pub cursor_position_in_buffer: CursorPositionInBuffer,
+    pub window_position_in_buffer: CursorPositionInBuffer,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Region {
+    pub start: EditorCursorData,
+    pub end: EditorCursorData,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -128,17 +57,13 @@ pub struct Editor {
     mode: Mode,
     pub should_exit: bool,
     pub terminal_size: TerminalSize,
-    // --- New coordinate system (transitional) ---
-    pub cursor: BufferPosition,       // バッファ上の論理カーソル
-    pub prev_cursor: BufferPosition,  // 直前のカーソル（スクロール調整用）
-    pub window_top_row: usize,        // 画面先頭が示すバッファ行
+    pub cursor_position_on_screen: CursorPositionOnScreen,
+    pub cursor_position_in_buffer: CursorPositionInBuffer,
+    pub window_position_in_buffer: CursorPositionInBuffer,
     pub status_line: String,
     pub command_history: Vec<Vec<ExecutedCommand>>,
     pub last_input_string: String,
     pub ex_command_data: String,
-    // 直近で multi-wrap 行をトップに昇格させた場合、その行番号を保持し、連続する上方向移動で
-    // trivial 行(#/空) を再度前に挿入して視界を汚さないようにするためのアンカー。
-    promoted_wrap_anchor: Option<usize>,
 }
 
 impl Editor {
@@ -154,179 +79,16 @@ impl Editor {
                 width: 0,
                 height: 0,
             },
-            cursor: BufferPosition { row: 0, col: 0 },
-            prev_cursor: BufferPosition { row: 0, col: 0 },
-            window_top_row: 0,
+            cursor_position_on_screen: CursorPositionOnScreen { row: 0, col: 0 },
+            cursor_position_in_buffer: CursorPositionInBuffer { row: 0, col: 0 },
+            window_position_in_buffer: CursorPositionInBuffer { row: 0, col: 0 },
             status_line: "".to_string(),
             command_history: Vec::new(),
             last_input_string: "".to_string(),
             ex_command_data: "".to_string(),
-            promoted_wrap_anchor: None,
         }
     }
 
-    // ---------------- New coordinate system helper methods -----------------
-    /// (互換用) 旧フィールド廃止後の no-op（既存コード呼出し残存のため）
-    pub fn sync_new_from_old(&mut self) {
-        // no-op
-    }
-
-    /// (互換用) 旧フィールド廃止後の no-op
-    pub fn sync_old_from_new(&mut self) {
-        // no-op
-    }
-
-    /// 新方式での画面位置計算
-    pub fn calculate_screen_position(&self) -> ScreenPosition {
-        let calc = WrappingCalculator::new(self.terminal_size.width);
-        calc.buffer_to_screen_position(&self.buffer, self.window_top_row, self.cursor)
-    }
-
-    /// カーソルを常に表示領域内に収める（上下方向対応）
-    pub fn ensure_cursor_visible(&mut self) {
-        // 端末幅取得
-        let width = self.terminal_size.width;
-    let _ = width; // width は今後の拡張用（行高キャッシュ等）
-        let content_height = self.content_height() as usize;
-    info!("ENSURE start prev_row={} cur_row={} top={} content_h={}", self.prev_cursor.row, self.cursor.row, self.window_top_row, content_height);
-
-        // EOF で移動失敗 (例: 最終行で 'j') の場合はスクロール副作用を避ける。
-        // prev_cursor は execute_command 開始時点のカーソルを保持しているため、
-        // 行が変わっていなければ論理的な縦移動は成立していないと判断できる。
-        if self.prev_cursor == self.cursor {
-            // 行が変わっていない => 縦移動失敗。下方向 EOF 試行でかつ最終行なら副作用回避。
-            if self.cursor.row == self.buffer.lines.len().saturating_sub(1) {
-                return;
-            }
-            // 上方向 (k) の場合は wrap 行頭露出ヒューリスティック等が働く余地があるため続行。
-        }
-
-    // 上方向: カーソル行が window_top_row より上
-    if self.cursor.row < self.window_top_row { self.window_top_row = self.cursor.row; }
-    let upward_move = self.prev_cursor.row > self.cursor.row;
-
-        // 上方向移動後: window_top_row..cursor.row の範囲で最後に出現する multi-wrap 行を top にする（カーソルが少なくともその行以降なら）
-        if self.prev_cursor.row > self.cursor.row {
-            let calc = WrappingCalculator::new(self.terminal_size.width);
-            // 1) 現在 window_top_row..cursor.row の範囲で最後に出現する multi-wrap 行を探す
-            let mut last_wrap: Option<usize> = None;
-            let start = self.window_top_row.min(self.cursor.row);
-            for r in start..=self.cursor.row { if let Some(l)=self.buffer.lines.get(r){ if calc.line_height(l)>1 { last_wrap = Some(r); } } }
-            if let Some(wrap_row) = last_wrap { if wrap_row > self.window_top_row { info!("PROMOTE last_wrap in-range {} -> top", wrap_row); self.window_top_row = wrap_row; self.promoted_wrap_anchor = Some(wrap_row); } }
-            // 2) もし in-range で見つからず & まだ window_top_row が multi-wrap 行より下にあれば、カーソル行まで遡って最初の multi-wrap を表示
-            if last_wrap.is_none() {
-                for r in (0..=self.cursor.row).rev() { if let Some(l) = self.buffer.lines.get(r) { if calc.line_height(l) > 1 { if self.window_top_row > r { info!("PROMOTE backward_wrap {} -> top (was {})", r, self.window_top_row); self.window_top_row = r; self.promoted_wrap_anchor = Some(r); } break; } } }
-            }
-        }
-
-        // 下方向: 行高さ（wrap 含む）を高速に見積もり。
-        // window_top_row..cursor.row-1 までの総高さ + cursor 行内の相対高さ +1 が content_height を超えるか評価。
-        // 精密計算のため一度 screen_position を取得し、過剰分だけ jump。
-        let sp = self.calculate_screen_position();
-        // Vim 互換: 同一論理行内のラップ境界を下方向へ移動中は、最終表示行を超えない限りスクロールしない
-        let same_line_downward = self.prev_cursor.row == self.cursor.row && self.prev_cursor.col < self.cursor.col;
-        if same_line_downward {
-            // 同じ論理行で物理行高さが content_height-1 以内ならスクロール抑止
-            if sp.row + 1 /* visible count */ <= content_height { /* keep */ } else {
-                // 物理的に下端を超えた場合のみ最小限スクロール
-                if sp.row >= content_height {
-                    let diff = sp.row + 1 - content_height; // overflow
-                    for _ in 0..diff { if self.window_top_row + 1 < self.buffer.lines.len() { self.window_top_row += 1; } }
-                }
-            }
-        } else if sp.row >= content_height {
-            // どれだけ overflow しているか
-            let overflow = sp.row + 1 - content_height; // +1: 0-based -> count
-            // overflow 行数だけ上に押し上げたいが、単純に window_top_row += overflow すると
-            // wrap 高さの差異で過剰スクロールの可能性があるため、上限まで段階的に。ただし概算でまとめて進め性能確保。
-            let mut advanced = 0usize;
-            while advanced < overflow && self.window_top_row + 1 < self.buffer.lines.len() {
-                self.window_top_row += 1;
-                advanced += 1;
-            }
-            // 最終調整: まだはみ出していたら追加で 1 行ずつ（通常ケースではほぼ不要）
-            loop {
-                let sp2 = self.calculate_screen_position();
-                if sp2.row < content_height { break; }
-                if self.window_top_row + 1 < self.buffer.lines.len() { self.window_top_row += 1; } else { break; }
-            }
-        }
-
-        // 上方向: 直前行が複数 wrap しており、まだ画面上部に余白がある場合は
-        // 可能な限り前方行を追加表示（カーソルは画面内最下段付近でも良い）。
-        // これにより長い行へ k で近づいた際に、その長い行の頭が自然に見えるようになる。
-        {
-            let calc = WrappingCalculator::new(self.terminal_size.width);
-            let _at_file_top = self.window_top_row == 0; // unused
-            // 条件: カーソル行より上に巨大行が存在し、現在 top がまだその行に達していない場合
-            // 直上行を 1 行ずつ表示領域に含められる限り引き上げる
-            let mut changed = true;
-            while changed {
-                changed = false;
-                if self.window_top_row == 0 { break; }
-                let prev_row = self.window_top_row - 1;
-                if prev_row >= self.buffer.lines.len() { break; }
-                let prev_height = if let Some(l) = self.buffer.lines.get(prev_row) { calc.line_height(l) } else { 1 };
-                let sp_now = self.calculate_screen_position();
-                // 上方向直後に wrap アンカーがある場合は前行追加による押し下げ禁止
-                if upward_move { if let Some(a)=self.promoted_wrap_anchor { if self.window_top_row==a { break; } } }
-                // 既に十分上方向に余白があり、追加で前行を含めても可視高さを超えないなら引き上げ
-                if sp_now.row + prev_height + 1 < content_height { // +1: 少なくとも 1 行は下方向余裕
-                    self.window_top_row -= 1;
-                    changed = true;
-                }
-            }
-
-            // trivial 押し出しヒューリスティックは wrap アンカー方式により不要となったため削除
-
-            // 旧: trivial 前置判定付き wrap 行昇格は簡略化済み
-
-            // ================== 新規ロジック: カーソル行全体をできるだけ収める ==================
-            // 目的: Vim のように j/k で長い行に入ったとき、可能ならその行の最初から最後の wrap までを
-            // 画面に収める（行全体高さ <= content_height の場合）。
-            if self.cursor.row < self.buffer.lines.len() {
-                if let Some(line) = self.buffer.lines.get(self.cursor.row) {
-                    let line_height = calc.line_height(line);
-                    if line_height <= content_height {
-                        // シンプル化: カーソル行の先頭を画面に収め、行末まで全て入る位置に調整。優先順位:
-                        // 1. カーソル行先頭を top に（上下方向一貫性、Vim で長行突入時の体感に近い）
-                        // 2. もし前行を少し表示しても末尾が入るなら一行ずつ上へ広げる
-
-                // シンプル上方向昇格: 上方向移動直後で、トップ行が trivial(#/空) かつその直後以降に
-                // multi-wrap 行が存在し、カーソルがその wrap 行より下にいる場合、wrap 行をトップに。
-                // （旧 trivial 前置探査ロジック削除）
-                        let desired_top = self.cursor.row;
-                        // 既に cursor 行より上の wrap 行をトップに昇格済みの場合（window_top_row < cursor.row）
-                        // は上書きせず保持する。cursor 行が画面外に押し出されるケースのみ補正。
-                        if self.window_top_row > desired_top {
-                            self.window_top_row = desired_top;
-                        }
-                        // 余白があれば前行を追加表示。ただし直前に wrap 行をトップ昇格させた直後の上方向移動では
-                        // その wrap 行より前の trivial 行を再挿入しない（テスト要件: 長行をトップに表示）。
-                        let prevent_upward_fill = upward_move && self.promoted_wrap_anchor.is_some() && self.promoted_wrap_anchor == Some(self.window_top_row);
-                        if prevent_upward_fill { info!("SKIP upward fill anchor={} top={}", self.promoted_wrap_anchor.unwrap(), self.window_top_row); }
-                        if !prevent_upward_fill {
-                            loop {
-                                if self.window_top_row == 0 { break; }
-                                // 高さ計算: window_top_row-1 から cursor 行まで
-                                let mut total = 0usize; let mut r4 = self.window_top_row - 1; let mut ok = true;
-                                while r4 <= self.cursor.row { if let Some(lx)=self.buffer.lines.get(r4){ total += calc.line_height(lx);} if total>content_height { ok=false; break;} if r4==self.cursor.row{break;} r4+=1; }
-                                if ok { self.window_top_row -=1; } else { break; }
-                            }
-                        }
-                    }
-                }
-            }
-            // ================================================================================
-            // 下方向 overscroll 防止のため、以前存在した長行除去ヒューリスティックを削除。
-
-            // 上方向移動直後に、カーソル行が multi-wrap でかつまだ全体が先頭から表示されていなければ昇格
-            // 旧: カーソル multi-wrap 行直接昇格は上部ロジックで包含済み
-        }
-        // 下方向へ移動したらアンカー解除
-    if self.prev_cursor.row < self.cursor.row { self.promoted_wrap_anchor = None; }
-    info!("ENSURE end   prev_row={} cur_row={} top={}", self.prev_cursor.row, self.cursor.row, self.window_top_row);
-    }
     pub fn open_file(&mut self, file_path: &PathBuf) {
         self.buffer = Buffer::from_file(file_path);
         self.editing_file_paths.push(file_path.clone());
@@ -363,8 +125,9 @@ impl Editor {
     pub fn resize_terminal(&mut self, width: u16, height: u16) {
         info!("Resize terminal to width: {}, height: {}", width, height);
         self.terminal_size = TerminalSize { width, height };
-    // cursor 可視性を再確認
-    self.ensure_cursor_visible();
+        if self.cursor_position_on_screen.col >= width {
+            self.cursor_position_on_screen.col = width - 1;
+        }
     }
 
     pub fn set_command_mode(&mut self) {
@@ -523,21 +286,21 @@ impl Editor {
         }
     }
 
-    // New system snapshots (preferred going forward)
-    pub fn snapshot_new_cursor(&self) -> NewCursorSnapshot {
-        NewCursorSnapshot { cursor: self.cursor, window_top_row: self.window_top_row }
+    pub fn snapshot_cursor_data(&self) -> EditorCursorData {
+        EditorCursorData {
+            cursor_position_on_screen: self.cursor_position_on_screen,
+            cursor_position_in_buffer: self.cursor_position_in_buffer,
+            window_position_in_buffer: self.window_position_in_buffer,
+        }
     }
 
-    pub fn restore_new_cursor(&mut self, snap: NewCursorSnapshot) {
-        self.cursor = snap.cursor;
-        self.window_top_row = snap.window_top_row;
-        // keep old fields in sync for transition
-        self.sync_old_from_new();
+    pub fn restore_cursor_data(&mut self, cursor_data: EditorCursorData) {
+        self.cursor_position_on_screen = cursor_data.cursor_position_on_screen;
+        self.cursor_position_in_buffer = cursor_data.cursor_position_in_buffer;
+        self.window_position_in_buffer = cursor_data.window_position_in_buffer;
     }
 
     pub fn execute_command(&mut self, command_data: CommandData) -> GenericResult<()> {
-    // 直前カーソル保存（スクロールヒューリスティック用）
-    self.prev_cursor = self.cursor;
         let mut command = command_factory(&command_data);
         if !command.is_modeful() && command.is_reusable() {
             for _ in 0..command_data.count {
@@ -609,62 +372,105 @@ impl Editor {
     }
 
     pub fn get_current_char(&self) -> Option<char> {
-    self.buffer.get_char(self.cursor.row, self.cursor.col)
+        self.buffer.get_char(
+            self.cursor_position_in_buffer.row,
+            self.cursor_position_in_buffer.col,
+        )
+    }
+
+    pub fn get_num_of_current_line_chars(&self) -> usize {
+        self.buffer
+            .lines
+            .get(self.cursor_position_in_buffer.row)
+            .map(|line| line.chars().count())
+            .unwrap_or(0)
     }
 
     pub fn insert_char(&mut self, c: char) -> GenericResult<()> {
-    // new system
-    self.sync_new_from_old();
-    self.buffer.insert_char(self.cursor.row, self.cursor.col, c)?;
-    self.last_input_string.push(c);
-    self.cursor.col += 1; // logical advance
-    self.ensure_cursor_visible();
-    self.sync_old_from_new();
-    Ok(())
+        self.buffer.insert_char(
+            self.cursor_position_in_buffer.row,
+            self.cursor_position_in_buffer.col,
+            c,
+        )?;
+        self.last_input_string.push(c);
+        let char_width = crate::util::get_char_width(c);
+        self.cursor_position_in_buffer.col += 1;
+        self.cursor_position_on_screen.col += char_width;
+        if self.cursor_position_on_screen.col >= self.terminal_size.width {
+            self.cursor_position_on_screen.col = 0;
+            if self.cursor_position_on_screen.row < self.content_height() - 1 {
+                self.cursor_position_on_screen.row += 1;
+            } else {
+                self.window_position_in_buffer.row += 1;
+            }
+        }
+
+        Ok(())
     }
 
     pub fn backward_delete_char(&mut self) -> GenericResult<()> {
-        self.sync_new_from_old();
-        if self.cursor.col > 0 && !self.last_input_string.is_empty() {
-            self.buffer.delete_char(self.cursor.row, self.cursor.col - 1)?;
+        if self.cursor_position_in_buffer.col > 0 && self.last_input_string.len() > 0 {
+            self.buffer.delete_char(
+                self.cursor_position_in_buffer.row,
+                self.cursor_position_in_buffer.col - 1,
+            )?;
             self.last_input_string.pop();
-            self.cursor.col -= 1;
-        } else if self.cursor.col == 0 && !self.last_input_string.is_empty() {
-            self.last_input_string.pop();
-            if self.cursor.row > 0 {
-                let rest = self.buffer.lines[self.cursor.row].clone();
-                self.buffer.lines.remove(self.cursor.row);
-                self.cursor.row -= 1;
-                // move to end of previous line
-                    if let Some(prev_line) = self.buffer.lines.get(self.cursor.row) {
-                        let len = prev_line.chars().count();
-                        self.cursor.col = if len == 0 { 0 } else { len - 1 };
-                    self.buffer.lines[self.cursor.row] += &rest;
+            self.cursor_position_in_buffer.col -= 1;
+            let char = self.buffer.get_char(
+                self.cursor_position_in_buffer.row,
+                self.cursor_position_in_buffer.col,
+            );
+            if let Some(char) = char {
+                let char_width = crate::util::get_char_width(char);
+                self.cursor_position_on_screen.col -= char_width;
+                if self.cursor_position_on_screen.col >= self.terminal_size.width {
+                    self.cursor_position_on_screen.col = self.terminal_size.width - 1;
+                    if self.cursor_position_on_screen.row > 0 {
+                        self.cursor_position_on_screen.row -= 1;
+                    } else if self.window_position_in_buffer.row > 0 {
+                        self.window_position_in_buffer.row -= 1;
+                    }
                 }
             }
+        } else if self.cursor_position_in_buffer.col == 0 && self.last_input_string.len() > 0 {
+            self.last_input_string.pop();
+            if self.cursor_position_in_buffer.row > 0 {
+                let rest_of_line = self.buffer.lines[self.cursor_position_in_buffer.row].clone();
+                self.buffer.lines.remove(self.cursor_position_in_buffer.row);
+                let mut previous_line = crate::command::commands::move_cursor::PreviousLine {};
+                previous_line.execute(self)?;
+                let mut move_end_of_line = crate::command::commands::move_cursor::MoveEndOfLine {};
+                move_end_of_line.execute(self)?;
+                self.buffer.lines[self.cursor_position_in_buffer.row] += &rest_of_line;
+                let mut forward_char = crate::command::commands::move_cursor::ForwardChar {};
+                forward_char.execute(self)?;
+            }
         }
-        self.ensure_cursor_visible();
-        self.sync_old_from_new();
         Ok(())
     }
 
     pub fn append_new_line(&mut self) -> GenericResult<()> {
-        self.sync_new_from_old();
-        let rest: String = self.buffer.lines[self.cursor.row]
+        let rest_of_line = self.buffer.lines[self.cursor_position_in_buffer.row]
             .chars()
-            .skip(self.cursor.col)
-            .collect();
-        let head: String = self.buffer.lines[self.cursor.row]
+            .skip(self.cursor_position_in_buffer.col)
+            .collect::<String>();
+        let new_line = self.buffer.lines[self.cursor_position_in_buffer.row]
             .chars()
-            .take(self.cursor.col)
-            .collect();
-        self.buffer.lines[self.cursor.row] = head;
-        self.buffer.lines.insert(self.cursor.row + 1, rest);
-        self.cursor.row += 1;
-        self.cursor.col = 0;
+            .take(self.cursor_position_in_buffer.col)
+            .collect::<String>();
+        self.buffer.lines[self.cursor_position_in_buffer.row] = new_line;
+        self.buffer
+            .lines
+            .insert(self.cursor_position_in_buffer.row + 1, rest_of_line);
+        self.cursor_position_in_buffer.row += 1;
+        self.cursor_position_in_buffer.col = 0;
+        if self.cursor_position_on_screen.row < self.content_height() - 1 {
+            self.cursor_position_on_screen.row += 1;
+        } else {
+            self.window_position_in_buffer.row += 1;
+        }
+        self.cursor_position_on_screen.col = 0;
         self.last_input_string.push('\n');
-        self.ensure_cursor_visible();
-        self.sync_old_from_new();
         Ok(())
     }
 
@@ -679,7 +485,7 @@ impl Editor {
                  }
             },
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::CurrentLine) => {
-                self.cursor.row as isize
+                self.cursor_position_in_buffer.row as isize
             },
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::FirstLine) => 0,
             crate::data::LineAddressType::Absolute(SimpleLineAddressType::LastLine) => {
@@ -697,8 +503,6 @@ impl Editor {
 
         line_number as usize
     }
-
-    // 以前 adjust_cursor_column_new で提供していた列補正は、必要箇所で直接行長チェックを行う方針に変更
 }
 
 impl Drop for Editor {

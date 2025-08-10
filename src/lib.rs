@@ -15,5 +15,4 @@ pub mod ex {
     pub mod lexer;
     pub mod parser;
 }
-pub mod wrapping;
 pub mod render;

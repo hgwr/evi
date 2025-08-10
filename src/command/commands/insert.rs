@@ -3,19 +3,22 @@ use std::any::Any;
 use log::info;
 
 use crate::command::base::Command;
-use crate::editor::{Editor, NewCursorSnapshot};
+use crate::editor::Editor;
 use crate::generic_error::GenericResult;
 use crate::util::split_line;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Insert {
-    pub snapshot: Option<NewCursorSnapshot>,
+    pub editor_cursor_data: Option<crate::editor::EditorCursorData>,
     pub text: Option<String>,
 }
 
 impl Default for Insert {
     fn default() -> Self {
-    Self { snapshot: None, text: None }
+        Self {
+            editor_cursor_data: None,
+            text: None,
+        }
     }
 }
 
@@ -37,7 +40,7 @@ impl Command for Insert {
         if editor.is_insert_mode() {
             // do nothing
         } else {
-            self.snapshot = Some(editor.snapshot_new_cursor());
+            self.editor_cursor_data = Some(editor.snapshot_cursor_data());
             editor.set_insert_mode();
         }
         Ok(())
@@ -48,10 +51,10 @@ impl Command for Insert {
     }
 
     fn undo(&mut self, editor: &mut Editor) -> GenericResult<()> {
-    if let Some(snap) = self.snapshot {
+        if let Some(original_cursor_data) = self.editor_cursor_data {
             if let Some(text) = &self.text {
-        let row = snap.cursor.row;
-        let col = snap.cursor.col;
+                let row = original_cursor_data.cursor_position_in_buffer.row;
+                let col = original_cursor_data.cursor_position_in_buffer.col;
                 let input_text_lines: Vec<&str> = split_line(text);
                 if input_text_lines.len() == 0 {
                     panic!("input_text_lines.len() == 0, text: '{:?}'", text);
@@ -79,14 +82,17 @@ impl Command for Insert {
                     }
                 }
             }
-            editor.restore_new_cursor(snap);
+            editor.restore_cursor_data(original_cursor_data);
         }
         Ok(())
     }
 
     fn redo(&mut self, editor: &mut Editor) -> GenericResult<Option<Box<dyn Command>>> {
         editor.is_dirty = true;
-    let new_insert = Box::new(Insert { snapshot: self.snapshot, text: self.text.clone() });
+        let new_insert = Box::new(Insert {
+            editor_cursor_data: self.editor_cursor_data,
+            text: self.text.clone(),
+        });
 
         if let Some(input_text) = &self.text {
             for c in input_text.chars() {
